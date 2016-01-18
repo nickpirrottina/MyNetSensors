@@ -23,6 +23,7 @@ function guid() {
       s4() + '-' + s4() + s4() + s4();
 }
 
+var MAIN_PANEL_ID = "Main";
 
 
 
@@ -39,8 +40,9 @@ var LiteGraph = {
 	CANVAS_GRID_SIZE: 10,
 	NODE_TITLE_COLOR: "#222",
 	NODE_DEFAULT_COLOR: "#999",
-	NODE_DEFAULT_BGCOLOR: "#444",
-	NODE_DEFAULT_BOXCOLOR: "#AEF",
+	NODE_DEFAULT_BGCOLOR: "#373737",
+	NODE_DEFAULT_BOXCOLOR: "#000",
+	NODE_ACTIVE_BOXCOLOR: "#AEF",
 	NODE_DEFAULT_SHAPE: "box",
 	MAX_NUMBER_OF_NODES: 1000, //avoid infinite loops
 	DEFAULT_POSITION: [100,100],//default node position
@@ -1310,7 +1312,8 @@ LGraphNode.prototype.serialize = function()
 		data: this.data,
 		flags: LiteGraph.cloneObject(this.flags),
 		inputs: this.inputs,
-		outputs: this.outputs
+		outputs: this.outputs,
+		panel_id: this.panel_id
 	};
 
 	if(this.properties)
@@ -1842,10 +1845,10 @@ LGraphNode.prototype.connect = function(slot, node, target_slot,linkId)
 			console.log("Connect: Error, slot number not found");
 		return false;
 	}
-
+    //derwish removed
 	//if there is something already plugged there, disconnect
-	if(target_slot != -1 && node.inputs[target_slot].link != null)
-		node.disconnectInput(target_slot);
+	//if(target_slot != -1 && node.inputs[target_slot].link != null)
+	//	node.disconnectInput(target_slot);
 
 	this.setDirtyCanvas(false,true);
 	this.graph.onConnectionChange();
@@ -1875,8 +1878,13 @@ LGraphNode.prototype.connect = function(slot, node, target_slot,linkId)
 		this.graph.links[ link.id ] = link;
 
 		//connect
-		if( output.links == null )	output.links = [];
-		output.links.push( link.id );
+		if (output.links == null) output.links = [];
+
+        //derwish added - do not push if exists
+		if (output.links.indexOf(link.id) == -1) {
+		    output.links.push(link.id);
+		}
+
 		node.inputs[target_slot].link = link.id;
 
 	}
@@ -2736,7 +2744,7 @@ LGraphCanvas.prototype.processMouseDown = function(e)
 								//this.dirty_bgcanvas = true;
 
 							    //derwish added
-							    send_delete_link(graph.links[input.link]);
+							    send_remove_link(graph.links[input.link]);
 
 								skip_action = true;
 							}
@@ -4370,7 +4378,13 @@ LGraphCanvas.onMenuAdd = function(node, e, prev_menu, canvas, first_event )
 		    //derwish added
 		    node.pos[0] = Math.round(node.pos[0]);
 		    node.pos[1] = Math.round(node.pos[1]);
-		    send_create_node(node);
+
+		    //derwish added
+		    if (window.this_panel_id!=null)
+		    node.panel_id = window.this_panel_id;//this_panel_id initialized from ViewBag
+
+
+            send_create_node(node);
 		}
 	}
 
@@ -4518,7 +4532,7 @@ LGraphCanvas.onMenuNodeShapes = function(node,e)
 LGraphCanvas.onMenuNodeRemove = function(node)
 {
 	if(node.removable == false) return;
-	send_delete_node(node);
+	send_remove_node(node);
     //derwish remove
 	//node.graph.remove(node);
 	//node.setDirtyCanvas(true, true);
@@ -4547,18 +4561,52 @@ LGraphCanvas.node_colors = {
 
 LGraphCanvas.prototype.getCanvasMenuOptions = function()
 {
-	var options = null;
+	var options = [];
 	if(this.getMenuOptions)
 		options = this.getMenuOptions();
 	else
 	{
-		options = [
-			{content:"Add Node", is_menu: true, callback: LGraphCanvas.onMenuAdd },
+	    options.push ({ content: "Add Node", is_menu: true, callback: LGraphCanvas.onMenuAdd });
 			//{content:"Collapse All", callback: LGraphCanvas.onMenuCollapseAll }
-		];
+
+	    options.push(null);
+
+	    options.push({
+	        content: "Reset View",
+	        callback: function() {
+	            editor.graphcanvas.offset = [0, 0];
+	            editor.graphcanvas.scale = 1;
+	            editor.graphcanvas.setZoom(1, [1, 1]);
+	        }
+	    });
+
+	    options.push({
+	        content: "Show Map",
+	        callback: function() {
+	            editor.addMiniWindow(200, 200);
+	        }
+	    });
+
+	    if (window.owner_panel_id != null && window.owner_panel_id != "") {
+
+
+	        options.push(null);
+
+	        var back_url = "/NodesEditor/";
+
+	        if (window.owner_panel_id != MAIN_PANEL_ID)
+	            back_url += "Panel/" + window.owner_panel_id;
+
+	        options.push({
+	                content: "Close Panel",
+	                callback: function () { window.location = back_url }
+	        });
+
+	    };
 
 		if(this._graph_stack && this._graph_stack.length > 0)
-			options = [{content:"Close subgraph", callback: this.closeSubgraph.bind(this) },null].concat(options);
+		    options.push({ content: "Close subgraph", callback: this.closeSubgraph.bind(this) });
+		
 	}
 
 	if(this.getExtraMenuOptions)
@@ -4585,13 +4633,13 @@ LGraphCanvas.prototype.getNodeMenuOptions = function(node)
             //derwish remove
 			//{ content: "Inputs", is_menu: true, disabled: true, callback: LGraphCanvas.onMenuNodeInputs },
 			//{content:"Outputs", is_menu: true, disabled:true, callback: LGraphCanvas.onMenuNodeOutputs },
-			null,
-			{ content: "Collapse", callback: LGraphCanvas.onMenuNodeCollapse },
+			//null,
+			{ content: "Collapse", callback: LGraphCanvas.onMenuNodeCollapse }
             //derwish remove
 			//{content:"Pin", callback: LGraphCanvas.onMenuNodePin },
 			//{content:"Colors", is_menu: true, callback: LGraphCanvas.onMenuNodeColors },
 			//{content:"Shapes", is_menu: true, callback: LGraphCanvas.onMenuNodeShapes },
-			null
+			//null
 		];
 
 	if(node.getExtraMenuOptions)
@@ -4599,7 +4647,7 @@ LGraphCanvas.prototype.getNodeMenuOptions = function(node)
 		var extra = node.getExtraMenuOptions(this);
 		if(extra)
 		{
-			extra.push(null);
+			//extra.push(null);
 			options = extra.concat( options );
 		}
 	}
@@ -4607,7 +4655,7 @@ LGraphCanvas.prototype.getNodeMenuOptions = function(node)
 	if( node.clonable !== false )
 			options.push({content:"Clone", callback: LGraphCanvas.onMenuNodeClone });
 	if( node.removable !== false )
-			options.push(null,{content:"Remove", callback: LGraphCanvas.onMenuNodeRemove });
+			options.push({content:"Remove", callback: LGraphCanvas.onMenuNodeRemove });
 
 	if(node.onGetInputs)
 	{
@@ -4820,10 +4868,10 @@ LiteGraph.createContextualMenu = function(values,options, ref_window)
 	style.position = "fixed";
 	style.top = "100px";
 	style.left = "100px";
-	style.color = "#AAF";
+	style.color = "#BBD";
 	style.padding = "2px";
-	style.borderBottom = "2px solid #AAF";
-	style.backgroundColor = "#444";
+	style.borderBottom = "1px solid #BBD";
+	style.backgroundColor = "#353535";
 
 	//title
 	if(options.title)

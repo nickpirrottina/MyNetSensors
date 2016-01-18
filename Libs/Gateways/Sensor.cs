@@ -26,13 +26,6 @@ namespace MyNetSensors.Gateways
 
 
 
-        public bool storeHistoryEnabled { get; set; }
-        //interval in seconds. if 0, will not store by timer
-        public int storeHistoryWithInterval { get; set; }
-        public bool storeHistoryEveryChange { get; set; }
-        public DateTime storeHistoryLastDate { get; set; }
-
-
         public bool invertData { get; set; }
         public bool remapEnabled { get; set; }
         public string remapFromMin { get; set; }
@@ -224,8 +217,7 @@ namespace MyNetSensors.Gateways
             if (!remapEnabled && !invertData)
                 return;
 
-            try
-            {
+       
                 if (CheckTypeIsBinary(dataType))
                 {
                     if (invertData)
@@ -328,18 +320,13 @@ namespace MyNetSensors.Gateways
                     state = ColorUtils.ConvertRGBWIntArrayToHexString(val);
 
                 }
-            }
-            catch
-            {
-                Console.WriteLine($"Can't remap data from Node{nodeId} Sensor{sensorId}");
-            }
+ 
         }
 
         public void UnRemapSensorData()
         {
 
-            try
-            {
+      
                 if (CheckTypeIsBinary(dataType))
                 {
                     if (invertData)
@@ -442,11 +429,7 @@ namespace MyNetSensors.Gateways
                     state = ColorUtils.ConvertRGBWIntArrayToHexString(val);
 
                 }
-            }
-            catch
-            {
-                Console.WriteLine($"Can't remap data from Node{nodeId} Sensor{sensorId}");
-            }
+  
         }
 
         public string ConvertSensorData(SensorDataType? newDataType)

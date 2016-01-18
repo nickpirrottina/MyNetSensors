@@ -8,6 +8,7 @@ using MyNetSensors.Gateways;
 using LiteGraph;
 using MyNetSensors.LogicalNodes;
 using MyNetSensors.LogicalNodesMySensors;
+using MyNetSensors.LogicalNodesUI;
 using MyNetSensors.SerialControllers;
 using Newtonsoft.Json;
 using Input = LiteGraph.Input;
@@ -18,28 +19,28 @@ namespace MyNetSensors.WebController.Controllers
 {
     public class NodesEditorAPIController : Controller
     {
-
+        const string MAIN_PANEL_ID = "Main";
 
         private LogicalNodesEngine engine = SerialController.logicalNodesEngine;
-   
-        public List<LiteGraph.Node> GetNodes()
+        private LogicalNodesUIEngine uiEngine = SerialController.logicalNodesUIEngine;
+
+
+        public List<LiteGraph.Node> GetNodes(string panelId)
         {
             if (engine == null)
                 return null;
 
+            if (panelId == null)
+                panelId = MAIN_PANEL_ID;
+
             List<LogicalNode> nodes = engine.nodes;
-            if (nodes==null || !nodes.Any())
+            if (nodes == null || !nodes.Any())
                 return null;
 
-            List<LiteGraph.Node> list = new List<LiteGraph.Node>();
-
-            foreach (var node in nodes)
-            {
-                LiteGraph.Node newNode = ConvertLogicalNodeToLitegraphNode(node);
-                list.Add(newNode);
-            }
-
-            return list;
+            return (
+                from node in nodes
+                where node.PanelId == panelId
+                select ConvertLogicalNodeToLitegraphNode(node)).ToList();
         }
 
 
@@ -49,11 +50,12 @@ namespace MyNetSensors.WebController.Controllers
             {
                 title = logicalNode.Title,
                 type = logicalNode.Type,
-                id = logicalNode.Id
+                id = logicalNode.Id,
+                panel_id = logicalNode.PanelId
             };
 
 
-            node.properties["objectType"] = logicalNode.GetType().ToString();
+            node.properties["ObjectType"] = logicalNode.GetType().ToString();
 
             if (logicalNode.Position != null)
                 node.pos = new[] { logicalNode.Position.X, logicalNode.Position.Y };
@@ -74,7 +76,7 @@ namespace MyNetSensors.WebController.Controllers
                         link = engine.GetLinkForInput(input)?.Id
                     });
                 }
- 
+
 
             if (logicalNode.Outputs != null)
                 foreach (var output in logicalNode.Outputs)
@@ -104,6 +106,52 @@ namespace MyNetSensors.WebController.Controllers
                     }
                 }
 
+            if (logicalNode is LogicalNodeUI)
+            {
+                LogicalNodeUI n = (LogicalNodeUI)logicalNode;
+                node.properties["Name"] = n.Name;
+                node.properties["ShowOnMainPage"] = n.ShowOnMainPage ? "true" : "false";
+            }
+
+            if (logicalNode is LogicalNodeUISlider)
+            {
+                LogicalNodeUISlider n = (LogicalNodeUISlider) logicalNode;
+                node.properties["Min"] = n.Min.ToString();
+                node.properties["Max"] = n.Max.ToString();
+            }
+
+            if (logicalNode is LogicalNodeUIChart)
+            {
+                LogicalNodeUIChart n = (LogicalNodeUIChart)logicalNode;
+                node.properties["State"] = n.State.ToString();
+                node.properties["WriteInDatabase"] = n.WriteInDatabase ? "true" : "false";
+                node.properties["UpdateInterval"] = n.UpdateInterval.ToString();
+            }
+
+            if (logicalNode is LogicalNodeConstant)
+            {
+                LogicalNodeConstant n = (LogicalNodeConstant)logicalNode;
+                node.properties["Value"] = n.Value;
+            }
+
+            if (logicalNode is LogicalNodePanel)
+            {
+                LogicalNodePanel n = (LogicalNodePanel)logicalNode;
+                node.properties["PanelName"] = n.Name;
+            }
+
+            if (logicalNode is LogicalNodePanelInput)
+            {
+                LogicalNodePanelInput n = (LogicalNodePanelInput)logicalNode;
+                node.properties["Name"] = n.Name;
+            }
+
+            if (logicalNode is LogicalNodePanelOutput)
+            {
+                LogicalNodePanelOutput n = (LogicalNodePanelOutput)logicalNode;
+                node.properties["Name"] = n.Name;
+            }
+
             return node;
         }
 
@@ -118,31 +166,27 @@ namespace MyNetSensors.WebController.Controllers
                 target_id = engine.GetInputOwner(logicalLink.InputId).Id,
                 origin_slot = GetOutputSlot(logicalLink.OutputId),
                 target_slot = GetInputSlot(logicalLink.InputId),
-                id = logicalLink.Id
+                id = logicalLink.Id,
+                panel_id = logicalLink.PanelId
             };
 
             return link;
         }
 
 
-        public List<LiteGraph.Link> GetLinks()
+        public List<LiteGraph.Link> GetLinks(string panelId)
         {
             if (engine == null)
                 return null;
 
             List<LogicalLink> links = engine.links;
-            if (links==null || !links.Any())
+            if (links == null || !links.Any())
                 return null;
 
-            List<LiteGraph.Link> list = new List<Link>();
-
-            foreach (var link in links)
-            {
-                list.Add(ConvertLogicalNodeToLitegraphLink(link));
-
-            }
-
-            return list;
+            return (
+                from link in links
+                where link.PanelId == panelId
+                select ConvertLogicalNodeToLitegraphLink(link)).ToList();
         }
 
 
@@ -172,9 +216,9 @@ namespace MyNetSensors.WebController.Controllers
             return -1;
         }
 
-    
 
-        public bool DeleteLink(Link link)
+
+        public bool RemoveLink(Link link)
         {
             if (engine == null)
                 return false;
@@ -184,7 +228,13 @@ namespace MyNetSensors.WebController.Controllers
 
             LogicalNode outNode = SerialController.logicalNodesEngine.GetNode(link.origin_id);
             LogicalNode inNode = SerialController.logicalNodesEngine.GetNode(link.target_id);
-            engine.DeleteLink(outNode.Outputs[link.origin_slot], inNode.Inputs[link.target_slot]);
+            if (outNode == null || inNode == null)
+            {
+                engine.LogEngineError($"Can`t remove link from [{link.origin_id}] to [{link.target_id}]. Does not exist.");
+                return false;
+            }
+            engine.RemoveLink(outNode.Outputs[link.origin_slot], inNode.Inputs[link.target_slot]);
+
             return true;
         }
 
@@ -196,8 +246,11 @@ namespace MyNetSensors.WebController.Controllers
             LogicalNode outNode = SerialController.logicalNodesEngine.GetNode(link.origin_id);
             LogicalNode inNode = SerialController.logicalNodesEngine.GetNode(link.target_id);
 
-            if (outNode == null || inNode==null)
+            if (outNode == null || inNode == null)
+            {
+                engine.LogEngineError($"Can`t create link from [{link.origin_id}] to [{link.target_id}]. Does not exist.");
                 return false;
+            }
 
             engine.AddLink(outNode.Outputs[link.origin_slot], inNode.Inputs[link.target_slot]);
             return true;
@@ -208,28 +261,45 @@ namespace MyNetSensors.WebController.Controllers
             if (engine == null)
                 return false;
 
-            string type = node.properties["objectType"];
+            LogicalNode newNode;
 
-            var newObject = Activator.CreateInstance("LogicalNodes", type);
-            LogicalNode newNode = (LogicalNode)newObject.Unwrap();
+            try
+            {
+                string type = node.properties["ObjectType"];
+                string assemblyName = type.Split('.')[1];
+
+                var newObject = Activator.CreateInstance(assemblyName, type);
+                newNode = (LogicalNode) newObject.Unwrap();
+            }
+            catch
+            {
+                engine.LogEngineError($"Can`t create node [{node.properties["ObjectType"]}]. Type does not exist.");
+                return false;
+            }
 
             //LogicalNode newNode = newObject as LogicalNode;
             newNode.Position = new Position { X = node.pos[0], Y = node.pos[1] };
-            newNode.Size = new Size { Width = node.size[0], Height = node.size[1] };
+            if (node.size.Length==2)
+                newNode.Size = new Size { Width = node.size[0], Height = node.size[1] };
             newNode.Id = node.id;
+            newNode.PanelId = node.panel_id ?? MAIN_PANEL_ID;
 
             engine.AddNode(newNode);
+
             return true;
         }
 
-        public bool DeleteNode(LiteGraph.Node node)
+        public bool RemoveNode(LiteGraph.Node node)
         {
             if (engine == null)
                 return false;
 
             LogicalNode oldNode = engine.GetNode(node.id);
             if (oldNode == null)
+            {
+                engine.LogEngineError($"Can`t remove node [{node.id}]. Does not exist.");
                 return false;
+            }
 
             engine.RemoveNode(oldNode);
             return true;
@@ -242,132 +312,146 @@ namespace MyNetSensors.WebController.Controllers
 
             LogicalNode oldNode = engine.GetNode(node.id);
             if (oldNode == null)
+            {
+                engine.LogEngineError($"Can`t update node [{node.id}]. Does not exist.");
                 return false;
+            }
 
             oldNode.Position = new Position { X = node.pos[0], Y = node.pos[1] };
             oldNode.Size = new Size { Width = node.size[0], Height = node.size[1] };
 
-            engine.UpdateNode(oldNode);
+            engine.UpdateNode(oldNode, true);
 
             return true;
         }
 
 
-
-
-
-        //private int CalculateNodeHeight(LiteGraph.Node node)
-        //{
-        //const int SLOT_SIZE = 15;
-        //const int NODE_WIDTH = 150;
-
-        //    int sizeOutY = 0, sizeInY = 0;
-
-        //    if (node.outputs != null)
-        //        sizeOutY = SLOT_SIZE + (SLOT_SIZE * node.outputs.Count);
-        //    if (node.inputs != null)
-        //        sizeInY = SLOT_SIZE + (SLOT_SIZE * node.inputs.Count);
-
-        //    return (sizeOutY > sizeInY) ? sizeOutY : sizeInY;
-        //}
-
-
-
-        //private void MooveNewNodesToFreeSpace(List<LiteGraph.Node> nodes)
-        //{
-        //const int SLOT_SIZE = 15;
-        //const int NODE_WIDTH = 150;
-
-        //    const int START_POS = 50;
-        //    const int FREE_SPACE_UNDER = 30;
-
-        //    for (int k = 0; k < nodes.Count; k++)
-        //    {
-        //        if (nodes[k].pos != null)
-        //            continue;
-
-        //        nodes[k].pos = new float[2];
-
-        //        float result = START_POS;
-
-
-        //        for (int i = 0; i < nodes.Count; i++)
-        //        {
-        //            float needFromY = result;
-        //            float needToY = result + nodes[k].size[1];
-
-        //            if (i == k)
-        //                continue;
-
-        //            if (nodes[i].pos == null)
-        //                continue;
-
-        //            if (nodes[i].pos[0] > NODE_WIDTH + 20 + START_POS)
-        //                continue;
-
-        //            float occupyFromY = nodes[i].pos[1]- FREE_SPACE_UNDER;
-        //            float occupyToY = nodes[i].pos[1] + nodes[i].size[1];
-
-        //            if (occupyFromY <= needToY && occupyToY >= needFromY)
-        //            {
-        //                result = occupyToY + FREE_SPACE_UNDER;
-        //                i = -1;
-        //            }
-        //        }
-
-        //        nodes[k].pos[0] = START_POS;
-        //        nodes[k].pos[1] = result;
-        //    }
-        //}
-
-        //public IActionResult GetGraph()
-        //{
-        //    string json = "{ \"iteration\":0,\"last_node_id\":3,\"last_link_id\":2,\"links\":{ \"0\":{ \"id\":0,\"origin_id\":2,\"origin_slot\":0,\"target_id\":0,\"target_slot\":0,\"data\":null},\"1\":{ \"id\":1,\"origin_id\":0,\"origin_slot\":0,\"target_id\":1,\"target_slot\":0,\"data\":null} },\"config\":{ },\"nodes\":[{\"id\":0,\"title\":\"SimpleNode\",\"type\":\"Nodes/SimpleNode\",\"pos\":[344,234],\"size\":[100,20],\"flags\":{},\"inputs\":[{\"name\":\"in\",\"type\":\"number\",\"link\":0}],\"outputs\":[{\"name\":\"out\",\"type\":\"number\",\"links\":[1]}],\"properties\":{\"min\":0,\"max\":1}},{\"id\":2,\"title\":\"SimpleOut\",\"type\":\"Nodes/SimpleOut\",\"pos\":[211,282],\"size\":[100,20],\"flags\":{},\"outputs\":[{\"name\":\"out\",\"type\":\"number\",\"links\":[0]}],\"properties\":{\"min\":0,\"max\":1}},{\"id\":1,\"title\":\"SimpleIn\",\"type\":\"Nodes/SimpleIn\",\"pos\":[471,160],\"size\":[100,20],\"flags\":{},\"inputs\":[{\"name\":\"in\",\"type\":\"number\",\"link\":1}],\"properties\":{\"min\":0,\"max\":1}}]}";
-        //    Graph graph = JsonConvert.DeserializeObject<Graph>(json);
-
-
-        //    return Json(graph);
-        //}
-
-        public bool PutGraph(string json)
+        public bool PanelSettings(string id, string panelname)
         {
-            return false;
-            Graph graph = JsonConvert.DeserializeObject<Graph>(json);
-
-            engine.RemoveAllLinks();
-            //hardwareEngine.RemoveAllNonHardwareNodes();
-
-            foreach (var node in graph.nodes)
+            LogicalNode n = engine.GetNode(id);
+            if (n == null)
             {
-                string type = node.properties["objectType"];
-
-                if (type == "MyNetSensors.LogicalNodes.LogicalHardwareNode")
-                {
-                    LogicalNode oldNode = engine.GetNode(node.id);
-                    oldNode.Position = new Position { X = node.pos[0], Y = node.pos[1] };
-                }
-                else
-                {
-                    CreateNode(node);
-                }
+                engine.LogEngineError($"Can`t set settings for Panel [{id}]. Does not exist.");
+                return false;
             }
 
-            foreach (Link link in graph.links.Values)
+            LogicalNodePanel node = (LogicalNodePanel)n;
+            node.Name = panelname;
+            engine.UpdateNode(node, true);
+
+            return true;
+        }
+
+        public bool InputOutputSettings(string id, string name)
+        {
+            LogicalNode n = engine.GetNode(id);
+            if (n == null)
             {
-                CreateLink(link);
+                engine.LogEngineError($"Can`t set settings for Input/Output [{id}]. Does not exist.");
+                return false;
             }
 
-            //for (int i = 0; i < graph.links.Count; i++)
-            //{
-            //    Link link = graph.links[i];
+            if (n is LogicalNodePanelInput)
+            {
+                LogicalNodePanelInput node = (LogicalNodePanelInput)n;
+                node.Name = name;
+                engine.UpdateNode(node, true);
+            }
 
-            //    LogicalNode outNode = SerialController.logicalNodesEngine.GetNode(link.origin_id);
-            //    LogicalNode inNode = SerialController.logicalNodesEngine.GetNode(link.target_id);
-            //    engine.AddLink(outNode.Outputs[link.origin_slot], inNode.Inputs[link.target_slot]);
-            //}
+            if (n is LogicalNodePanelOutput)
+            {
+                LogicalNodePanelOutput node = (LogicalNodePanelOutput)n;
+                node.Name = name;
+                engine.UpdateNode(node, true);
+            }
+
+            return true;
+        }
+
+        public bool UINodeSettings(string id, string name,bool show)
+        {
+            LogicalNode n = engine.GetNode(id);
+            if (n == null)
+            {
+                engine.LogEngineError($"Can`t set settings for Node [{id}]. Does not exist.");
+                return false;
+            }
+
+            LogicalNodeUI node = (LogicalNodeUI)n;
+            node.Name = name;
+            node.ShowOnMainPage = show;
+            engine.UpdateNode(node, true);
+
+            return true;
+        }
+
+
+        public bool UISliderSettings(string id, string name, int min,int max,bool show)
+        {
+            LogicalNode n = engine.GetNode(id);
+            if (n == null)
+            {
+                engine.LogEngineError($"Can`t set settings for Node [{id}]. Does not exist.");
+                return false;
+            }
+            if (min >= max)
+            {
+                engine.LogEngineError($"Can`t set settings for Node [{id}]. Min must be > Max.");
+                return false;
+            }
+
+            LogicalNodeUISlider node = (LogicalNodeUISlider)n;
+            node.Name = name;
+            node.Min = min;
+            node.Max = max;
+            node.ShowOnMainPage = show;
+            engine.UpdateNode(node, true);
+
+            return true;
+        }
+
+        public bool ConstantSettings(string id, string value)
+        {
+            LogicalNode n = engine.GetNode(id);
+            if (n == null)
+            {
+                engine.LogEngineError($"Can`t set settings for Node [{id}]. Does not exist.");
+                return false;
+            }
+
+            LogicalNodeConstant node = (LogicalNodeConstant)n;
+            node.SetValue(value);
+            engine.UpdateNode(node, true);
+
+            return true;
+        }
+
+
+        public bool UIChartSettings(string id, string name, bool show, bool writeInDatabase, int updateInterval)
+        {
+            LogicalNode n = engine.GetNode(id);
+            if (n == null)
+            {
+                engine.LogEngineError($"Can`t set settings for Node [{id}]. Does not exist.");
+                return false;
+            }
+
+            LogicalNodeUIChart node = (LogicalNodeUIChart)n;
+
+            if (node.WriteInDatabase && !writeInDatabase)
+                uiEngine.ClearChart(node.Id);
+
+            node.Name = name;
+            node.ShowOnMainPage = show;
+            node.WriteInDatabase = writeInDatabase;
+            node.UpdateInterval = updateInterval;
+            engine.UpdateNode(node, true);
 
 
             return true;
         }
+
+
+        
     }
 }

@@ -1,9 +1,17 @@
 ﻿
+
+/*error log message*/
+.error-log-message {
+    color: #ff0000;
+}
+
+
 /*scroolbars always visible for smooth animation fades*/
 body {
     overflow: -moz-scrollbars-vertical;
     overflow: scroll;
 }
+
 
 
 /*validation errors red color*/
@@ -42,6 +50,19 @@ input[type="checkbox"].input-validation-error {
 
 /*semantic ui*/
 
+.ui.progress, .ui.progress:last-child, .ui.progress:first-child {
+    margin: 0.2em 0em 0em;
+}
+
+.text-box-form {
+    margin: 0.3em 0em 0em;
+}
+
+
+.ui.button.nonbutton {
+    padding: 0;
+    opacity: 1 !important;
+}
 
 .nonvisible {
     visibility: hidden;
@@ -111,13 +132,15 @@ input[type="checkbox"].input-validation-error {
 
 
 .noUi-connect {
-    background: #41A5F0;
+    background: #2185D0;
+    /*background: #41A5F0;*/
     /*background: #777;*/
-    height: 12px;
+    height: 13px;
 }
 
 .switch-input:checked ~ .switch-label {
-    background: #41A5F0;
+    background: #2185D0;
+    /*background: #41A5F0;*/
     /*background: #777;*/
 }
 

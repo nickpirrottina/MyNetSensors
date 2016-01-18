@@ -38,14 +38,14 @@ namespace MyNetSensors.Gateways
 
         public event MessageEventHandler OnMessageRecievedEvent;
         public event MessageEventHandler OnMessageSendEvent;
-        public event NodeEventHandler OnDeleteNodeEvent;
+        public event NodeEventHandler OnRemoveNodeEvent;
         public event NodeEventHandler OnNewNodeEvent;
         public event NodeEventHandler OnNodeUpdatedEvent;
         public event NodeEventHandler OnNodeLastSeenUpdatedEvent;
         public event NodeEventHandler OnNodeBatteryUpdatedEvent;
         public event SensorEventHandler OnNewSensorEvent;
         public event SensorEventHandler OnSensorUpdatedEvent;
-        public event Action OnClearNodesListEvent;
+        public event Action OnRemoveAllNodesEvent;
         public event Action OnDisconnectedEvent;
         public event Action OnUnexpectedlyDisconnectedEvent;
         public event Action OnConnectedEvent;
@@ -70,6 +70,8 @@ namespace MyNetSensors.Gateways
             this.serialPort.OnDataReceivedEvent += RecieveMessage;
             this.serialPort.OnDisconnectedEvent += OnSerialPortDisconnectedEvent;
             this.serialPort.OnConnectedEvent += TryToCommunicateWithGateway;
+            this.serialPort.OnLogError += LogError;
+            this.serialPort.OnLogInfo += OnLogInfo;
         }
 
 
@@ -413,7 +415,14 @@ namespace MyNetSensors.Gateways
             {
                 sensor.dataType = (SensorDataType)mes.subType;
                 sensor.state = mes.payload;
-                sensor.RemapSensorData();
+                try
+                {
+                    sensor.RemapSensorData();
+                }
+                catch
+                {
+                    LogError($"Incorrect data in Node{sensor.nodeId} Sensor{sensor.sensorId}");
+                }
             }
             else if (mes.messageType == MessageType.C_PRESENTATION)
             {
@@ -477,7 +486,15 @@ namespace MyNetSensors.Gateways
                 return;
             }
             sensor.state = state;
-            sensor.UnRemapSensorData();
+            
+            try
+            {
+                sensor.UnRemapSensorData();
+            }
+            catch
+            {
+                LogError($"Incorrect data in Node{sensor.nodeId} Sensor{sensor.sensorId}");
+            }
             SendSensorState(sensor);
         }
 
@@ -556,11 +573,11 @@ namespace MyNetSensors.Gateways
         }
 
 
-        public void ClearNodesList()
+        public void RemoveAllNodes()
         {
             nodes.Clear();
 
-            OnClearNodesListEvent?.Invoke();
+            OnRemoveAllNodesEvent?.Invoke();
         }
 
         public async Task SendRebootToAllNodes()
@@ -616,9 +633,6 @@ namespace MyNetSensors.Gateways
             {
                 Sensor oldSensor = oldNode.GetSensor(sensor.sensorId);
                 oldSensor.description = sensor.description;
-                oldSensor.storeHistoryEnabled = sensor.storeHistoryEnabled;
-                oldSensor.storeHistoryEveryChange = sensor.storeHistoryEveryChange;
-                oldSensor.storeHistoryWithInterval = sensor.storeHistoryWithInterval;
                 oldSensor.invertData = sensor.invertData;
                 oldSensor.remapEnabled = sensor.remapEnabled;
                 oldSensor.remapFromMin = sensor.remapFromMin;
@@ -628,11 +642,11 @@ namespace MyNetSensors.Gateways
             }
         }
 
-        public void DeleteNode(int nodeId)
+        public void RemoveNode(int nodeId)
         {
             Node oldNode = GetNode(nodeId);
 
-            OnDeleteNodeEvent?.Invoke(oldNode);
+            OnRemoveNodeEvent?.Invoke(oldNode);
 
             if (oldNode != null)
                 nodes.Remove(oldNode);

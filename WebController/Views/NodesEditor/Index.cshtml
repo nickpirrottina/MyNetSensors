@@ -1,4 +1,5 @@
-﻿@{
+﻿@using MyNetSensors.LogicalNodes
+@{
     Layout = null;
     ViewBag.Title = "Nodes Editor";
 }
@@ -14,46 +15,85 @@
 
 
     <link href="~/lib/semantic-ui/dist/semantic.min.css" rel="stylesheet" />
-    <link rel="stylesheet" type="text/css" href="~/css/style.css">
     <link rel="stylesheet" type="text/css" href="~/css/litegraph.css">
     <link rel="stylesheet" type="text/css" href="~/css/litegraph-editor.css">
+    <link rel="stylesheet" type="text/css" href="~/css/site-black.css">
 </head>
 <body>
 
     <!-- Header Menu-->
     <div class="ui inverted fixed big borderless main menu">
         <div class="ui container">
-
             <a asp-controller="Home" asp-action="About" class="ui item fadebefore"><h3>MyNetSensors</h3></a>
-
-            @*<a asp-controller="Gateway" asp-action="Control" class="ui item hidesmall fadebefore">Control</a>*@
-
-
             <div class="right menu">
-                <div class="item">
 
-                    <button  type="button" class="ui black button" id="reset-view-button">Reset</button>
-                    <button  type="button" class="ui black button" id="minimap-button">Map</button>
-                    <button type="button" class="ui black button" id="fullscreen-button">Full screen</button>
-                    <a asp-controller="Gateway" asp-action="Control" class="ui black button fadebefore">X</a>
-                </div>
             </div>
-
-
-        </div>
+            </div>
     </div>
     <br />
     <br />
-<br/>
-<div id="main"/></div>
+    <br />
+<div class="ui container">
+    @if (@ViewBag.panelId != "Main")
+    {
+        <a asp-controller="Dashboard" asp-action="Panel" asp-route-id="@ViewBag.panelId" class="ui inverted small basic right floated button">Dashboard</a>
+    }
+    else
+    {
+        <a asp-controller="Dashboard" asp-action="Index" class="ui inverted small basic right floated button">Dashboard</a>
+        
+    }
+
+    <div class="ui tiny buttons">
+        <a asp-controller="NodesEditor" asp-action="Index" class="ui inverted tiny basic button">Main Panel</a>
+        @{
+            List<LogicalNodePanel> panelsStack = ViewBag.panelsStack;
+            if (panelsStack != null && panelsStack.Any())
+            {
+                foreach (LogicalNodePanel panel in panelsStack)
+                {
+                    <a asp-action="Panel" asp-route-id="@panel.Id" class="ui inverted tiny basic button">@panel.Name</a>
+                }
+            }
+        }
+    </div>
+</div>
+    <br />
+    <div id="main"></div>
+
+    <div class="ui small modal" id="node-settings-panel">
+        <div class="header" id="node-settings-title">
+            Const
+        </div>
+        <div class="content" id="node-settings-body">
+            thtryr
+        </div>
+        <div class="actions">
+            <div class="ui cancel button">
+                Cancel
+            </div>
+            <div class="ui ok blue button">
+                OK
+            </div>
+        </div>
+    </div>
+
+    <script>
+        //this var used in litegraph.js
+        var this_panel_id = "@ViewBag.panelId";
+        var owner_panel_id = "@ViewBag.ownerPanelId";
+    </script>
+
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/semantic-ui/dist/semantic.min.js"></script>
     <script type="text/javascript" src="~/js/litegraph/litegraph.js"></script>
     <script type="text/javascript" src="~/js/litegraph/litegraph-editor.js"></script>
-    <script type="text/javascript" src="~/js/litegraph/nodes-list.js"></script>
-    <script type="text/javascript" src="~/js/litegraph/nodes-engine.js"></script>
+    <script type="text/javascript" src="~/js/litegraph/litegraph-list.js"></script>
+    <script type="text/javascript" src="~/js/litegraph/litegraph-engine.js"></script>
     <script asp-src-include="~/lib/signalr/jquery.signalr.js"></script>
     <script src="~/signalr/hubs" type="text/javascript"></script>
+
+
 </body>
 </html>

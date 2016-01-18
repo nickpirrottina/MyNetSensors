@@ -77,11 +77,7 @@ namespace MyNetSensors.WebController.Controllers
         }
 
 
-        public bool ClearNodes()
-        {
-            gateway.ClearNodesList();
-            return true;
-        }
+
 
 
 
@@ -91,20 +87,18 @@ namespace MyNetSensors.WebController.Controllers
             return true;
         }
 
-        public bool DeleteNode(int nodeId)
+        public bool RemoveNode(int nodeId)
         {
             if (gateway.GetNode(nodeId) == null)
                 return false;
-            gateway.DeleteNode(nodeId);
+            gateway.RemoveNode(nodeId);
             return true;
         }
 
 
-        public async Task<bool> DropNodes()
+        public async Task<bool> RemoveAllNodes()
         {
-            await DropHistory();
-
-            ClearNodes();
+            gateway.RemoveAllNodes();
 
             return true;
         }
@@ -116,17 +110,6 @@ namespace MyNetSensors.WebController.Controllers
 
   
 
-        public async Task<ActionResult> DropHistory()
-        {
-            await StopWritingHistory();
-            //waiting for all history writings finished
-            await Task.Delay(2000);
-
-            SerialController.historyDb.DropHistory();
-
-            return Json(true);
-
-        }
 
 
         public ActionResult DisableTasks()
@@ -138,11 +121,11 @@ namespace MyNetSensors.WebController.Controllers
              return Json(true);
         }
 
-        public async Task<ActionResult> DropTasks()
+        public async Task<ActionResult> RemoveAllTasks()
         {
             DisableTasks();
             await Task.Delay(1000);
-            SerialController.nodesTasksDb.DropTasks();
+            SerialController.nodesTasksDb.RemoveAllTasks();
 
             UpdateNodesTasks();
              return Json(true);
@@ -150,23 +133,7 @@ namespace MyNetSensors.WebController.Controllers
 
 
 
-        public async Task<ActionResult> StopWritingHistory()
-        {
-            var nodes = gateway.GetNodes();
-            //turn off writing history in nodes settings
-            foreach (var node in nodes)
-            {
-                foreach (var sensor in node.sensors)
-                {
-                    sensor.storeHistoryEnabled = false;
-                }
-
-                UpdateNodeSettings(node);
-
-                await Task.Delay(100);
-            }
-             return Json(true);
-        }
+     
 
     }
 }

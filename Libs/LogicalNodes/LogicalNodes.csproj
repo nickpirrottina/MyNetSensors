@@ -45,16 +45,21 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ILogicalNodesRepository.cs" />
+    <Compile Include="ILogicalNodesStatesRepository.cs" />
     <Compile Include="Input.cs" />
     <Compile Include="LiteGraph.cs" />
     <Compile Include="LogicalNode.cs" />
+    <Compile Include="LogicalNodeConstant.cs" />
     <Compile Include="LogicalNodeConsole.cs" />
-    <Compile Include="LogicalNodeConst.cs" />
+    <Compile Include="LogicalNodePanelOutput.cs" />
+    <Compile Include="LogicalNodePanelInput.cs" />
+    <Compile Include="LogicalNodePanel.cs" />
     <Compile Include="LogicalNodeCounter.cs" />
     <Compile Include="LogicalNodeInvert.cs" />
     <Compile Include="LogicalNodeMathPlus.cs" />
     <Compile Include="LogicalNodesEngine.cs" />
     <Compile Include="LogicalLink.cs" />
+    <Compile Include="NodeState.cs" />
     <Compile Include="Output.cs" />
     <Compile Include="Position.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

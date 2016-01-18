@@ -15,11 +15,13 @@ namespace MyNetSensors.LogicalNodes
     public delegate void LogMessageEventHandler(string message);
     public class LogicalNodesEngine
     {
+        const string MAIN_PANEL_ID = "Main";
+
         //If you have tons of logical nodes, and system perfomance decreased, increase this value,
         //and you will get less nodes updating frequency 
         private int updateNodesInterval = 1;
 
-        private ILogicalNodesRepository db;
+        private ILogicalNodesRepository nodesDb;
 
         private Timer updateNodesTimer = new Timer();
         public List<LogicalNode> nodes = new List<LogicalNode>();
@@ -36,12 +38,12 @@ namespace MyNetSensors.LogicalNodes
 
         public event LogicalNodesEventHandler OnNodesUpdatedEvent;
         public event LogicalNodeEventHandler OnNewNodeEvent;
-        public event LogicalNodeEventHandler OnNodeDeleteEvent;
+        public event LogicalNodeEventHandler OnRemoveNodeEvent;
         public event LogicalNodeEventHandler OnNodeUpdatedEvent;
         public event LogicalInputEventHandler OnInputUpdatedEvent;
         public event LogicalOutputEventHandler OnOutputUpdatedEvent;
         public event LogicalLinkEventHandler OnNewLinkEvent;
-        public event LogicalLinkEventHandler OnLinkDeleteEvent;
+        public event LogicalLinkEventHandler OnRemoveLinkEvent;
         public event LogicalLinksEventHandler OnLinksUpdatedEvent;
 
         public delegate void LogicalNodeEventHandler(LogicalNode node);
@@ -52,7 +54,7 @@ namespace MyNetSensors.LogicalNodes
         public delegate void LogicalLinksEventHandler(List<LogicalLink> link);
 
 
-        public LogicalNodesEngine(ILogicalNodesRepository db = null)
+        public LogicalNodesEngine(ILogicalNodesRepository nodesDb = null)
         {
             //var x= AppDomain.CurrentDomain.GetAssemblies()
             //           .SelectMany(assembly => assembly.GetTypes())
@@ -61,15 +63,17 @@ namespace MyNetSensors.LogicalNodes
 
             LogicalNodesEngine.logicalNodesEngine = this;
 
-            this.db = db;
+            this.nodesDb = nodesDb;
+
+
 
 
             updateNodesTimer.Elapsed += UpdateNodes;
             updateNodesTimer.Interval = updateNodesInterval;
 
-            if (db != null)
+            if (nodesDb != null)
             {
-                db.CreateDb();
+                nodesDb.CreateDb();
                 GetNodesFromRepository();
                 GetLinksFromRepository();
             }
@@ -103,24 +107,24 @@ namespace MyNetSensors.LogicalNodes
 
         public void GetNodesFromRepository()
         {
-            if (db != null)
-                nodes = db.GetAllNodes();
+            if (nodesDb != null)
+                nodes = nodesDb.GetAllNodes();
 
             OnNodesUpdatedEvent?.Invoke(nodes);
         }
 
         private void GetLinksFromRepository()
         {
-            if (db != null)
-                links = db.GetAllLinks();
+            if (nodesDb != null)
+                links = nodesDb.GetAllLinks();
 
-            //delete link if node is not exist
+            //remove link if node is not exist
             LogicalLink[] oldLinks = links.ToArray();
             foreach (var link in oldLinks)
             {
                 if (GetInput(link.InputId) == null || GetOutput(link.OutputId) == null)
                 {
-                    db?.DeleteLink(link.Id);
+                    nodesDb?.RemoveLink(link.Id);
 
                     links.Remove(link);
                 }
@@ -129,6 +133,7 @@ namespace MyNetSensors.LogicalNodes
 
             OnNodesUpdatedEvent?.Invoke(nodes);
         }
+
 
         private void UpdateNodes(object sender, ElapsedEventArgs e)
         {
@@ -174,65 +179,312 @@ namespace MyNetSensors.LogicalNodes
 
         public void AddNode(LogicalNode node)
         {
+            if (node.PanelId != MAIN_PANEL_ID && GetPanelNode(node.PanelId) == null)
+            {
+                LogEngineError($"Can`t create node [{node.GetType().Name}]. Panel [{node.PanelId}] does not exist.");
+                return;
+            }
+
+
+            if (node is LogicalNodePanel)
+            {
+                if (!AddPanel((LogicalNodePanel)node))
+                    return;
+            }
+            if (node is LogicalNodePanelInput)
+            {
+                if (!AddPanelInput((LogicalNodePanelInput)node))
+                    return;
+            }
+            if (node is LogicalNodePanelOutput)
+            {
+                if (!AddPanelOutput((LogicalNodePanelOutput)node))
+                    return;
+            }
+
             nodes.Add(node);
 
-            db?.AddNode(node);
+            nodesDb?.AddNode(node);
 
-            LogEngineInfo($"New node {node.GetType().Name}");
+            LogEngineInfo($"New node [{node.GetType().Name}]");
 
             OnNewNodeEvent?.Invoke(node);
         }
 
+
+
+        private string GeneratePanelName(LogicalNodePanel node)
+        {
+            //auto naming
+            List<LogicalNodePanel> nodes = GetPanelNodes();
+            List<string> names = nodes.Select(x => x.Name).ToList();
+            for (int i = 1; i <= names.Count + 1; i++)
+            {
+                if (!names.Contains($"{node.Name} {i}"))
+                    return $"{node.Name} {i}";
+            }
+            return null;
+        }
+
+        private bool AddPanel(LogicalNodePanel node)
+        {
+            node.Name = GeneratePanelName(node);
+            return true;
+        }
+
+        private bool AddPanelInput(LogicalNodePanelInput node)
+        {
+            if (node.PanelId == MAIN_PANEL_ID)
+            {
+                LogEngineError("Can`t create input for main panel.");
+                return false;
+            }
+
+            LogicalNodePanel panel = GetPanelNode(node.PanelId);
+            if (panel == null)
+            {
+                LogEngineError($"Can`t create panel input. Panel [{node.PanelId}] does not exist.");
+                return false;
+            }
+
+            node.Name = GenerateInputName(panel, node);
+
+            Input input = new Input
+            {
+                Id = node.Id,
+                Name = node.Name
+            };
+            panel.Inputs.Add(input);
+
+            UpdateNode(panel,true);
+
+            return true;
+        }
+
+
+
+        private bool AddPanelOutput(LogicalNodePanelOutput node)
+        {
+            if (node.PanelId == MAIN_PANEL_ID)
+            {
+                LogEngineError("Can`t create output for main panel.");
+                return false;
+            }
+
+            LogicalNodePanel panel = GetPanelNode(node.PanelId);
+            if (panel == null)
+            {
+                LogEngineError($"Can`t create panel output. Panel [{node.PanelId}] does not exist.");
+                return false;
+            }
+
+            node.Name = GenerateOutputName(panel, node);
+
+
+            Output output = new Output
+            {
+                Id = node.Id,
+                Name = node.Name
+            };
+            panel.Outputs.Add(output);
+
+            UpdateNode(panel, true);
+            return true;
+        }
+
+
+
+        private string GenerateInputName(LogicalNodePanel panel, LogicalNodePanelInput node)
+        {
+            //auto naming
+            List<string> names = panel.Inputs.Select(x => x.Name).ToList();
+            for (int i = 1; i <= names.Count + 1; i++)
+            {
+                if (!names.Contains($"{node.Name} {i}"))
+                    return $"{node.Name} {i}";
+            }
+            return null;
+        }
+
+        private string GenerateOutputName(LogicalNodePanel panel, LogicalNodePanelOutput node)
+        {
+            //auto naming
+            List<string> names = panel.Outputs.Select(x => x.Name).ToList();
+            for (int i = 1; i <= names.Count + 1; i++)
+            {
+                if (!names.Contains($"{node.Name} {i}"))
+                    return $"{node.Name} {i}";
+            }
+            return null;
+        }
+
+
         public void RemoveNode(LogicalNode node)
         {
+            if (!nodes.Contains(node))
+            {
+                LogEngineError($"Can`t remove node [{node.GetType().Name}]. Node [{node.Id}] does not exist.");
+                return;
+            }
 
             List<LogicalLink> links = GetLinksForNode(node);
             foreach (var link in links)
             {
-                    DeleteLink(link);
+                RemoveLink(link);
             }
 
-            OnNodeDeleteEvent?.Invoke(node);
-            LogEngineInfo($"Remove node {node.GetType().Name}");
+            OnRemoveNodeEvent?.Invoke(node);
+            LogEngineInfo($"Remove node [{node.GetType().Name}]");
 
-            db?.DeleteNode(node.Id);
+            if (node is LogicalNodePanelInput)
+                RemovePanelInput((LogicalNodePanelInput)node);
+            else if (node is LogicalNodePanelOutput)
+                RemovePanelOutput((LogicalNodePanelOutput)node);
+            else if (node is LogicalNodePanel)
+                RemovePanel((LogicalNodePanel)node);
+
+
+            nodesDb?.RemoveNode(node.Id);
 
             nodes.Remove(node);
         }
 
-
-
-        public void UpdateNode(LogicalNode node)
+        private void RemovePanel(LogicalNodePanel node)
         {
-            LogEngineInfo($"Update node {node.GetType().Name}");
+            List<LogicalNode> nodes = GetNodesForPanel(node);
+            foreach (var n in nodes)
+            {
+                RemoveNode(n);
+            }
+        }
 
-            LogicalNode oldNode = nodes.FirstOrDefault(x => x.Id == node.Id);
+        private List<LogicalNode> GetNodesForPanel(LogicalNodePanel node)
+        {
+            return nodes.Where(n => n.PanelId == node.Id).ToList();
+        }
 
-            oldNode.Inputs = node.Inputs;
-            oldNode.Outputs = node.Outputs;
-            oldNode.Position = node.Position;
-            oldNode.Size = node.Size;
-            oldNode.Title = node.Title;
-            oldNode.Type = node.Type;
+        private List<LogicalNodePanel> GetPanelNodes()
+        {
+            return nodes.Where(n => n is LogicalNodePanel).Cast<LogicalNodePanel>().ToList();
+        }
 
-            db?.UpdateNode(oldNode);
+
+        private bool RemovePanelInput(LogicalNodePanelInput node)
+        {
+            LogicalNodePanel panel = GetPanelNode(node.PanelId);
+            if (panel == null)
+            {
+                LogEngineError($"Can`t remove panel input. Panel [{node.PanelId}] does not exist.");
+                return false;
+            }
+
+            Input input = GetInput(node.Id);
+
+            LogicalLink link = GetLinkForInput(input);
+            if (link != null)
+                RemoveLink(link);
+
+            panel.Inputs.Remove(input);
+            UpdateNode(panel, true);
+            return true;
+        }
+
+        private bool RemovePanelOutput(LogicalNodePanelOutput node)
+        {
+            LogicalNodePanel panel = GetPanelNode(node.PanelId);
+            if (panel == null)
+            {
+                LogEngineError($"Can`t remove panel input. Panel [{node.PanelId}] does not exist.");
+                return false;
+            }
+
+            Output output = GetOutput(node.Id);
+
+            List<LogicalLink> links = GetLinksForOutput(output);
+            foreach (var link in links)
+                RemoveLink(link);
+
+            panel.Outputs.Remove(output);
+            UpdateNode(panel, true);
+            return true;
+        }
+
+
+        public void UpdateNode(LogicalNode node, bool writeNodeToDb)
+        {
+            if (writeNodeToDb)
+            {
+                LogicalNode oldNode = nodes.FirstOrDefault(x => x.Id == node.Id);
+
+                if (oldNode == null)
+                {
+                    LogEngineError($"Can`t update node [{node.GetType().Name}]. Node [{node.Id}] does not exist.");
+                    return;
+                }
+
+                LogEngineInfo($"Update node [{node.GetType().Name}]");
+
+                if (node is LogicalNodePanelInput)
+                    UpdatePanelInput((LogicalNodePanelInput) node);
+                if (node is LogicalNodePanelOutput)
+                    UpdatePanelOutput((LogicalNodePanelOutput) node);
+
+
+                oldNode.Inputs = node.Inputs;
+                oldNode.Outputs = node.Outputs;
+                oldNode.Position = node.Position;
+                oldNode.Size = node.Size;
+                oldNode.Title = node.Title;
+                oldNode.Type = node.Type;
+
+                nodesDb?.UpdateNode(oldNode);
+            }
 
             OnNodeUpdatedEvent?.Invoke(node);
         }
 
+        private void UpdatePanelInput(LogicalNodePanelInput node)
+        {
+            Input input = GetInput(node.Id);
+            input.Name = node.Name;
+            LogicalNode panel = GetPanelNode(node.PanelId);
+
+            UpdateNode(panel, true);
+        }
+        private void UpdatePanelOutput(LogicalNodePanelOutput node)
+        {
+            Output output = GetOutput(node.Id);
+            output.Name = node.Name;
+            LogicalNode panel = GetPanelNode(node.PanelId);
+
+            UpdateNode(panel, true);
+        }
+
+
+
+        public LogicalNodePanel GetPanelNode(string panelId)
+        {
+            return (LogicalNodePanel)nodes.FirstOrDefault(n => n is LogicalNodePanel && n.Id == panelId);
+        }
 
 
         public void UpdateOutput(string outputId, string value, string name = null)
         {
             Output oldOutput = GetOutput(outputId);
 
+            if (oldOutput == null)
+            {
+                LogEngineError($"Can`t update output [{outputId}]. Does not exist.");
+                return;
+            }
+
             oldOutput.Value = value;
 
-            if (name != null && name!= oldOutput.Name)
+            if (name != null && name != oldOutput.Name)
             {
                 oldOutput.Name = name;
                 LogicalNode node = GetOutputOwner(oldOutput);
-                db?.UpdateNode(node);
+                nodesDb?.UpdateNode(node);
             }
         }
 
@@ -240,13 +492,19 @@ namespace MyNetSensors.LogicalNodes
         {
             Input oldInput = GetInput(inputId);
 
+            if (oldInput == null)
+            {
+                LogEngineError($"Can`t update input [{inputId}]. Does not exist.");
+                return;
+            }
+
             oldInput.Value = value;
 
             if (name != null && name != oldInput.Name)
             {
                 oldInput.Name = name;
                 LogicalNode node = GetInputOwner(oldInput);
-                db?.UpdateNode(node);
+                nodesDb?.UpdateNode(node);
             }
 
         }
@@ -255,6 +513,13 @@ namespace MyNetSensors.LogicalNodes
         {
             Input input = GetInput(inputId);
             Output output = GetOutput(outputId);
+
+            if (input == null || output == null)
+            {
+                LogEngineError($"Can`t create link from [{outputId}] to [{inputId}]. Does not exist.");
+                return;
+            }
+
             AddLink(output, input);
         }
 
@@ -263,17 +528,38 @@ namespace MyNetSensors.LogicalNodes
             LogicalNode inputNode = GetInputOwner(input);
             LogicalNode outputNode = GetOutputOwner(output);
 
+            if (inputNode == null || outputNode == null)
+            {
+                LogEngineError($"Can`t create link from [{output.Id}] to [{input.Id}]. Does not exist.");
+                return;
+            }
+
+            if (inputNode == outputNode )
+            {
+                LogEngineError($"Can`t create link from [{output.Id}] to [{input.Id}]. Input and output belong to the same node.");
+                return;
+            }
+
+            if (inputNode.PanelId != outputNode.PanelId)
+            {
+                LogEngineError($"Can`t create link from {outputNode.GetType().Name} to {inputNode.GetType().Name}. Nodes are on different panels.");
+                return;
+            }
+
+
+
             //prevent two links to one input
             LogicalLink oldLink = GetLinkForInput(input);
-            if (oldLink!=null)
-                DeleteLink(oldLink);
+            if (oldLink != null)
+                RemoveLink(oldLink);
 
-            LogEngineInfo($"New link from {outputNode.GetType().Name} to {inputNode.GetType().Name}");
+            LogEngineInfo($"New link from [{outputNode.GetType().Name}] to [{inputNode.GetType().Name}]");
 
             LogicalLink link = new LogicalLink(output.Id, input.Id);
+            link.PanelId = inputNode.PanelId;
             links.Add(link);
 
-            db?.AddLink(link);
+            nodesDb?.AddLink(link);
 
             OnNewLinkEvent?.Invoke(link);
 
@@ -284,25 +570,42 @@ namespace MyNetSensors.LogicalNodes
 
         }
 
-        public void DeleteLink(Output output, Input input)
-        {
-            LogicalNode inputNode = GetInputOwner(input);
-            LogicalNode outputNode = GetOutputOwner(output);
-            LogEngineInfo($"Delete link from {outputNode.GetType().Name} to {inputNode.GetType().Name}");
 
+
+        public void RemoveLink(Output output, Input input)
+        {
             LogicalLink link = GetLink(output, input);
 
-            db?.DeleteLink(link.Id);
+            if (link == null)
+            {
+                LogEngineError($"Can`t remove link from [{output.Id}] to [{input.Id}]. Does not exist.");
+                return;
+            }
 
-            OnLinkDeleteEvent?.Invoke(link);
+            LogicalNode inputNode = GetInputOwner(input);
+            LogicalNode outputNode = GetOutputOwner(output);
+            LogEngineInfo($"Remove link from [{outputNode.GetType().Name}] to [{inputNode.GetType().Name}]");
+
+            nodesDb?.RemoveLink(link.Id);
+
+            OnRemoveLinkEvent?.Invoke(link);
             links.Remove(link);
+
+            input.Value = null;
         }
 
-        public void DeleteLink(LogicalLink link)
+        public void RemoveLink(LogicalLink link)
         {
-            Output output=GetOutput(link.OutputId);
-            Input input=GetInput(link.InputId);
-            DeleteLink(output,input);
+            Output output = GetOutput(link.OutputId);
+            Input input = GetInput(link.InputId);
+
+            if (output == null || input == null)
+            {
+                LogEngineError($"Can`t create link from [{link.OutputId}] to [{link.InputId}]. Does not exist.");
+                return;
+            }
+
+            RemoveLink(output, input);
         }
 
         public LogicalLink GetLink(Output output, Input input)
@@ -351,7 +654,6 @@ namespace MyNetSensors.LogicalNodes
                 Input input = GetInput(link.InputId);
                 Output output = GetOutput(link.OutputId);
                 input.Value = output.Value;
-                OnInputUpdatedEvent?.Invoke(input);
             }
         }
 
@@ -425,7 +727,7 @@ namespace MyNetSensors.LogicalNodes
             foreach (var node in nodes)
             {
                 node.OnDeserialize();
-                LogEngineInfo($"New node {node.GetType().Name}");
+                LogEngineInfo($"New node [{node.GetType().Name}]");
             }
 
             if (state)
@@ -434,26 +736,58 @@ namespace MyNetSensors.LogicalNodes
             OnNodesUpdatedEvent?.Invoke(nodes);
         }
 
+        // this list used for infinite loop detection
+        List<Input> changedInputsStack=new List<Input>();
+
+        public void OnInputChange(Input input)
+        {
+            if (!started)
+                return;
+
+            LogicalNode node = GetInputOwner(input.Id);
+
+            if (changedInputsStack.Contains(input))
+            {
+                changedInputsStack.Remove(input);
+                LogEngineError($"Infinite loop detected in Node [{node.Type}] [{node.Id}].");
+                return;
+            }
+            changedInputsStack.Add(input);
+
+            node.OnInputChange(input);
+
+            if (node is LogicalNodePanel)
+                GetNode(input.Id).Outputs[0].Value = input.Value;
+
+            if (node is LogicalNodePanelOutput)
+                GetOutput(node.Id).Value = input.Value;
+
+            OnInputUpdatedEvent?.Invoke(input);
+
+            changedInputsStack.Remove(input);
+        }
+
         public void OnOutputChange(Output output)
         {
             if (!started)
                 return;
 
+            LogicalNode node = GetOutputOwner(output);
+            if (node == null)
+                return;
+
             OnOutputUpdatedEvent?.Invoke(output);
 
+            node.OnOutputChange(output);
 
-            LogicalNode owner = GetOutputOwner(output);
-            owner.OnOutputChange(output);
-
+            //send state to linked nodes
             List<LogicalLink> list = links.Where(x => x.OutputId == output.Id).ToList();
-
             foreach (var link in list)
             {
                 Input input = GetInput(link.InputId);
                 if (input != null)
                 {
                     input.Value = output.Value;
-                    OnInputUpdatedEvent?.Invoke(input);
                 }
             }
 
@@ -479,29 +813,14 @@ namespace MyNetSensors.LogicalNodes
             return (from node in nodes from output in node.Outputs where output.Id == outputId select node).FirstOrDefault();
         }
 
-        public void OnInputChange(Input input)
-        {
-
-            //LogNodes($"Input changed: {input.Name}");
-
-            if (!started)
-                return;
-
-            foreach (var node in nodes)
-            {
-                if (node.Inputs.Contains(input))
-                    node.OnInputChange(input);
-            }
-
-            OnInputUpdatedEvent?.Invoke(input);
-        }
+      
 
 
         public void RemoveAllNodesAndLinks()
         {
             LogEngineInfo("Remove all nodes and links");
 
-            db?.DropNodes();
+            nodesDb?.RemoveAllNodes();
 
             links = new List<LogicalLink>();
             nodes = new List<LogicalNode>();

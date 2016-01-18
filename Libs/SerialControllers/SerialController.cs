@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using MyNetSensors.Gateways;
 using MyNetSensors.LogicalNodes;
 using MyNetSensors.LogicalNodesMySensors;
+using MyNetSensors.LogicalNodesUI;
 using MyNetSensors.NodesTasks;
 using MyNetSensors.Repositories.Dapper;
 using MyNetSensors.Repositories.EF.SQLite;
@@ -46,7 +47,6 @@ namespace MyNetSensors.SerialControllers
         public static Gateway gateway = new Gateway(comPort);
 
         public static IGatewayRepository gatewayDb;
-        public static INodesHistoryRepository historyDb;
         public static INodesMessagesRepository messagesDb;
 
         public static NodesTasksEngine nodesTasksEngine;
@@ -54,7 +54,9 @@ namespace MyNetSensors.SerialControllers
 
         public static LogicalNodesEngine logicalNodesEngine;
         public static LogicalHardwareNodesEngine logicalHardwareNodesEngine;
+        public static LogicalNodesUIEngine logicalNodesUIEngine;
         public static ILogicalNodesRepository logicalNodesDb;
+        public static ILogicalNodesStatesRepository logicalNodesStatesDb;
 
         public static SerialControllerLogs logs = new SerialControllerLogs();
 
@@ -117,10 +119,10 @@ namespace MyNetSensors.SerialControllers
                 }
 
                 gatewayDb = new GatewayRepositoryDapper(dataBaseConnectionString);
-                historyDb = new NodesHistoryRepositoryDapper(dataBaseConnectionString);
                 messagesDb = new NodesMessagesRepositoryDapper(dataBaseConnectionString);
                 nodesTasksDb = new NodesTasksRepositoryDapper(dataBaseConnectionString);
                 logicalNodesDb = new LogicalNodesRepositoryDapper(dataBaseConnectionString);
+                logicalNodesStatesDb = new LogicalNodesStatesRepositoryDapper(dataBaseConnectionString);
             }
             else
             {
@@ -132,9 +134,6 @@ namespace MyNetSensors.SerialControllers
             gatewayDb.ConnectToGateway(gateway);
             gatewayDb.OnLogInfo += logs.AddDataBaseInfo;
             gatewayDb.OnLogError += logs.AddDataBaseError;
-
-            historyDb.SetWriteInterval(dataBaseWriteInterval);
-            historyDb.ConnectToGateway(gateway);
 
             messagesDb.SetWriteInterval(dataBaseWriteInterval);
             messagesDb.ConnectToGateway(gateway);
@@ -185,13 +184,17 @@ namespace MyNetSensors.SerialControllers
 
         }
 
-        public static void ReconnectToGateway(string serialPortName)
+        public static async void ReconnectToGateway(string serialPortName)
         {
-            gateway.Disconnect();
+            await Task.Run(() =>
+            {
+                gateway.Disconnect();
 
-            SerialController.serialPortName = serialPortName;
+                SerialController.serialPortName = serialPortName;
 
-            gateway.Connect(serialPortName).Wait();
+                gateway.Connect(serialPortName).Wait();
+
+            });
         }
 
 
@@ -224,7 +227,6 @@ namespace MyNetSensors.SerialControllers
 
 
             logicalNodesEngine = new LogicalNodesEngine(logicalNodesDb);
-            //logicalNodesEngine=new LogicalNodesEngine();
 
             logicalNodesEngine.SetUpdateInterval(logicalNodesUpdateInterval);
 
@@ -235,6 +237,7 @@ namespace MyNetSensors.SerialControllers
 
 
             logicalHardwareNodesEngine = new LogicalHardwareNodesEngine(gateway, logicalNodesEngine);
+            logicalNodesUIEngine = new LogicalNodesUIEngine(logicalNodesEngine,logicalNodesStatesDb);
 
             logicalNodesEngine.Start();
 

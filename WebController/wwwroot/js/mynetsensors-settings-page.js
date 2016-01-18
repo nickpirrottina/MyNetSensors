@@ -43,25 +43,12 @@ function updateInfo(gatewayInfo) {
 
 $(document).ready(function () {
 
-    $("#dropHistory").click(function () {
-        $('#confirm-delete-history-dialog').modal({
-            onApprove: function () {
-                $.ajax({
-                    type: "POST", url: "/GatewayAPI/DropHistory",
-                    success: function (result) {
-                        if (result) noty({ text: 'History was deleted.' });
-                    }
-                });
-            }
-        })
-        .modal('setting', 'transition', 'fade up').modal('show');
-    });
 
     $("#dropTasks").click(function () {
         $('#confirm-delete-tasks-dialog').modal({
             onApprove: function () {
                 $.ajax({
-                    type: "POST", url: "/GatewayAPI/DropTasks",
+                    type: "POST", url: "/GatewayAPI/RemoveAllTasks",
                     success: function (result) {
                         if (result) noty({ text: 'Tasks were deleted.' });
                     }
@@ -75,7 +62,7 @@ $(document).ready(function () {
         $('#confirm-delete-nodes-dialog').modal({
             onApprove: function () {
                 $.ajax({
-                    type: "POST", url: "/GatewayAPI/DropNodes",
+                    type: "POST", url: "/GatewayAPI/RemoveAllNodes",
                     success: function (result) {
                         if (result) noty({ text: 'Nodes were deleted.' });
                     }
@@ -84,14 +71,6 @@ $(document).ready(function () {
         }).modal('setting', 'transition', 'fade up').modal('show');
     });
 
-    $("#stopWritingHistory").click(function () {
-        $.ajax({
-            type: "POST", url: "/GatewayAPI/StopWritingHistory",
-            success: function (result) {
-                if (result) noty({ text: 'History writing is stopped.' });
-            }
-        });
-    });
 
     $("#disableTasks").click(function () {
         $.ajax({

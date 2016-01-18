@@ -6,6 +6,7 @@ using Microsoft.AspNet.SignalR;
 using Microsoft.AspNet.SignalR.Infrastructure;
 using MyNetSensors.Gateways;
 using MyNetSensors.LogicalNodes;
+using MyNetSensors.LogicalNodesUI;
 using MyNetSensors.SerialControllers;
 using MyNetSensors.WebController.Controllers;
 
@@ -16,18 +17,25 @@ namespace MyNetSensors.WebController.Code
         private static IHubContext hub;
         private static Gateway gateway;
         private static LogicalNodesEngine logicalNodesEngine;
+        private static LogicalNodesUIEngine logicalNodesUiEngine;
 
         public static void Start(IConnectionManager connectionManager)
         {
             hub = connectionManager.GetHubContext<ClientsHub>();
 
             SerialController.OnStarted += OnSerialControllerStarted;
-            SerialController.logs.OnGatewayLogInfo += OnGatewayLogInfo;
-            SerialController.logs.OnNodeLogInfo += OnNodeLogInfo;
-            SerialController.logs.OnDataBaseLogInfo += OnDataBaseLogInfo;
-            SerialController.logs.OnLogicalNodesEngineLogInfo += OnLogicalNodesEngineLogInfo;
-            SerialController.logs.OnLogicalNodeLogInfo += OnLogicalNodeLogInfo;
-            SerialController.logs.OnSerialControllerLogInfo += OnSerialControllerLogInfo;
+            SerialController.logs.OnGatewayLogInfo += OnLogRecord;
+            SerialController.logs.OnGatewayLogError += OnLogRecord;
+            SerialController.logs.OnNodeLogInfo += OnLogRecord;
+            SerialController.logs.OnNodeLogError += OnLogRecord;
+            SerialController.logs.OnDataBaseLogInfo += OnLogRecord;
+            SerialController.logs.OnDataBaseLogError += OnLogRecord;
+            SerialController.logs.OnLogicalNodesEngineLogInfo += OnLogRecord;
+            SerialController.logs.OnLogicalNodesEngineLogError += OnLogRecord;
+            SerialController.logs.OnLogicalNodeLogInfo += OnLogRecord;
+            SerialController.logs.OnLogicalNodeLogError += OnLogRecord;
+            SerialController.logs.OnSerialControllerLogInfo += OnLogRecord;
+            SerialController.logs.OnSerialControllerLogError += OnLogRecord;
         }
 
       
@@ -37,12 +45,13 @@ namespace MyNetSensors.WebController.Code
         {
             gateway = SerialController.gateway;
             logicalNodesEngine = SerialController.logicalNodesEngine;
+            logicalNodesUiEngine = SerialController.logicalNodesUIEngine;
 
             gateway.OnMessageRecievedEvent += OnMessageRecievedEvent;
             gateway.OnMessageSendEvent += OnMessageSendEvent;
             gateway.OnConnectedEvent += OnConnectedEvent;
             gateway.OnDisconnectedEvent += OnDisconnectedEvent;
-            gateway.OnClearNodesListEvent += OnClearNodesListEvent;
+            gateway.OnRemoveAllNodesEvent += OnRemoveAllNodesEvent;
             gateway.OnNewNodeEvent += OnNewNodeEvent;
             gateway.OnNodeUpdatedEvent += OnNodeUpdatedEvent;
             gateway.OnNodeLastSeenUpdatedEvent += OnNodeLastSeenUpdatedEvent;
@@ -54,11 +63,47 @@ namespace MyNetSensors.WebController.Code
             {
                 logicalNodesEngine.OnNewNodeEvent += OnNewLogicalNodeEvent;
                 logicalNodesEngine.OnNodeUpdatedEvent += OnLogicalNodeUpdatedEvent;
-                logicalNodesEngine.OnNodeDeleteEvent += OnLogicalNodeDeleteEvent;
+                logicalNodesEngine.OnRemoveNodeEvent += OnRemoveLogicalNodeEvent;
                 logicalNodesEngine.OnLinksUpdatedEvent += OnLinksUpdatedEvent;
-                logicalNodesEngine.OnLinkDeleteEvent += OnLinkDeleteEvent;
+                logicalNodesEngine.OnRemoveLinkEvent += OnRemoveLinkEvent;
                 logicalNodesEngine.OnNewLinkEvent += OnNewLinkEvent;
+                logicalNodesEngine.OnInputUpdatedEvent += OnInputUpdatedEvent;
+                logicalNodesEngine.OnOutputUpdatedEvent += OnOutputUpdatedEvent;
             }
+
+            if (logicalNodesUiEngine != null)
+            {
+                logicalNodesUiEngine.OnUINodeUpdatedEvent += OnUINodeUpdatedEvent;
+                logicalNodesUiEngine.OnNewUINodeEvent += OnNewUINodeEvent;
+                logicalNodesUiEngine.OnRemoveUINodeEvent += OnRemoveUiNodeEvent;
+            }
+        }
+
+        private static void OnOutputUpdatedEvent(Output output)
+        {
+            LogicalNode node = logicalNodesEngine.GetOutputOwner(output);
+            hub.Clients.All.OnNodeActivity(node.Id);
+        }
+
+        private static void OnInputUpdatedEvent(Input input)
+        {
+            LogicalNode node = logicalNodesEngine.GetInputOwner(input);
+            hub.Clients.All.OnNodeActivity(node.Id);
+        }
+
+        private static void OnRemoveUiNodeEvent(LogicalNodeUI node)
+        {
+            hub.Clients.All.OnUINodeRemoveEvent(node);
+        }
+
+        private static void OnNewUINodeEvent(LogicalNodeUI node)
+        {
+            hub.Clients.All.OnNewUINodeEvent(node);
+        }
+
+        private static void OnUINodeUpdatedEvent(LogicalNodeUI node)
+        {
+            hub.Clients.All.OnUINodeUpdatedEvent(node);
         }
 
 
@@ -69,11 +114,11 @@ namespace MyNetSensors.WebController.Code
             hub.Clients.All.OnNewLinkEvent(liteGraphLink);
         }
 
-        private static void OnLinkDeleteEvent(LogicalLink link)
+        private static void OnRemoveLinkEvent(LogicalLink link)
         {
             NodesEditorAPIController nodesEditorApi = new NodesEditorAPIController();
             LiteGraph.Link liteGraphLink = nodesEditorApi.ConvertLogicalNodeToLitegraphLink(link);
-            hub.Clients.All.OnDeleteLinkEvent(liteGraphLink);
+            hub.Clients.All.OnRemoveLinkEvent(liteGraphLink);
         }
 
         private static void OnLinksUpdatedEvent(List<LogicalLink> link)
@@ -81,11 +126,11 @@ namespace MyNetSensors.WebController.Code
 
         }
 
-        private static void OnLogicalNodeDeleteEvent(LogicalNode node)
+        private static void OnRemoveLogicalNodeEvent(LogicalNode node)
         {
             NodesEditorAPIController nodesEditorApi = new NodesEditorAPIController();
             LiteGraph.Node liteGraphNode = nodesEditorApi.ConvertLogicalNodeToLitegraphNode(node);
-            hub.Clients.All.OnLogicalNodeDeleteEvent(liteGraphNode);
+            hub.Clients.All.OnLogicalNodeRemoveEvent(liteGraphNode.id);
         }
 
         private static void OnLogicalNodeUpdatedEvent(LogicalNode node)
@@ -102,6 +147,9 @@ namespace MyNetSensors.WebController.Code
             LiteGraph.Node liteGraphNode = nodesEditorApi.ConvertLogicalNodeToLitegraphNode(node);
             hub.Clients.All.OnNewLogicalNodeEvent(liteGraphNode);
         }
+
+
+
 
 
 
@@ -135,9 +183,9 @@ namespace MyNetSensors.WebController.Code
             hub.Clients.All.OnNewNodeEvent(node);
         }
 
-        private static void OnClearNodesListEvent()
+        private static void OnRemoveAllNodesEvent()
         {
-            hub.Clients.All.OnClearNodesListEvent();
+            hub.Clients.All.OnRemoveAllNodesEvent();
         }
 
         private static void OnDisconnectedEvent()
@@ -166,41 +214,10 @@ namespace MyNetSensors.WebController.Code
 
 
 
-        private static void OnSerialControllerLogInfo(LogRecord record)
+        private static void OnLogRecord(LogRecord record)
         {
-            hub.Clients.All.OnSerialControllerLog(record.ToString());
-            hub.Clients.All.OnLog(record.ToStringWithType());
+            hub.Clients.All.OnLogRecord(record);
         }
-
-        private static void OnLogicalNodesEngineLogInfo(LogRecord record)
-        {
-            hub.Clients.All.OnLogicalNodesEngineLog(record.ToString());
-            hub.Clients.All.OnLog(record.ToStringWithType());
-        }
-
-        private static void OnLogicalNodeLogInfo(LogRecord record)
-        {
-            hub.Clients.All.OnLogicalNodesLog(record.ToString());
-            hub.Clients.All.OnLog(record.ToStringWithType());
-        }
-
-        private static void OnDataBaseLogInfo(LogRecord record)
-        {
-            hub.Clients.All.OnDataBaseStateLog(record.ToString());
-            hub.Clients.All.OnLog(record.ToStringWithType());
-        }
-
-
-        private static void OnNodeLogInfo(LogRecord record)
-        {
-            hub.Clients.All.OnGatewayMessagesLog(record.Message);
-            hub.Clients.All.OnLog(record.ToStringWithType());
-        }
-
-        private static void OnGatewayLogInfo(LogRecord record)
-        {
-            hub.Clients.All.OnGatewayStateLog(record.ToString());
-            hub.Clients.All.OnLog(record.ToStringWithType());
-        }
+        
     }
 }

@@ -20,15 +20,50 @@ namespace MyNetSensors.WebController.Controllers
 
     public class NodesEditorController : Controller
     {
-        public NodesEditorController()
-        {
-        }
+        const string MAIN_PANEL_ID = "Main";
 
-        //private LogicalNodesEngine engine = SerialController.logicalNodesEngine;
+        private LogicalNodesEngine engine = SerialController.logicalNodesEngine;
 
         public IActionResult Index()
         {
-              return View();
+            ViewBag.panelId = MAIN_PANEL_ID;
+
+            return View();
+        }
+
+        public IActionResult Panel(string id)
+        {
+            if (id == null || id== MAIN_PANEL_ID)
+                return RedirectToAction("Index");
+
+            LogicalNodePanel panel = engine.GetPanelNode(id);
+
+            if (panel == null)
+                return HttpNotFound();
+
+            ViewBag.panelId = panel.Id;
+            ViewBag.ownerPanelId = panel.PanelId;
+
+            //create menu stack
+            List<LogicalNodePanel> panelsStack = new List<LogicalNodePanel>();
+
+            bool findNext = true;
+            while (findNext)
+            {
+                panelsStack.Add(panel);
+                if (panel.PanelId == MAIN_PANEL_ID)
+                    findNext = false;
+                else
+                {
+                    panel = engine.GetPanelNode(panel.PanelId);
+                }
+            }
+
+            panelsStack.Reverse();
+            ViewBag.panelsStack = panelsStack;
+
+
+            return View("Index");
         }
 
     }

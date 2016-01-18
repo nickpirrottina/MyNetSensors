@@ -22,19 +22,19 @@ namespace MyNetSensors.LogicalNodesMySensors
             gateway.OnNodeUpdatedEvent += CreateOrUpdateNode;
             gateway.OnNewSensorEvent += CreateOrUpdateSensor;
             gateway.OnSensorUpdatedEvent += CreateOrUpdateSensor;
-            gateway.OnClearNodesListEvent += OnClearNodesListEvent;
-            gateway.OnDeleteNodeEvent += OnDeleteNodeEvent;
+            gateway.OnRemoveAllNodesEvent += OnRemoveAllNodesEvent;
+            gateway.OnRemoveNodeEvent += OnRemoveNodeEvent;
             CreateAndAddHardwareNodes();
         }
 
-        private void OnDeleteNodeEvent(Node node)
+        private void OnRemoveNodeEvent(Node node)
         {
             LogicalHardwareNode oldNode = GetHardwareNode(node.Id);
             if (oldNode != null)
                 engine.RemoveNode(oldNode);
         }
 
-        private void OnClearNodesListEvent()
+        private void OnRemoveAllNodesEvent()
         {
             engine.RemoveAllNodesAndLinks();
         }
@@ -46,7 +46,7 @@ namespace MyNetSensors.LogicalNodesMySensors
             {
                 LogicalHardwareNode node = GetHardwareNode(sensor.nodeId);
                 node.AddInputOutput(sensor);
-                engine.UpdateNode(node);//for call event
+                engine.UpdateNode(node,true);//for call event
             }
             else
             {
@@ -65,8 +65,9 @@ namespace MyNetSensors.LogicalNodesMySensors
             }
             else
             {
+                //todo update inputs names
                 oldNode.Title = node.GetSimpleName1();
-                engine.UpdateNode(oldNode);
+                engine.UpdateNode(oldNode,true);
             }
         }
 
