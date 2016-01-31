@@ -3,9 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNet.Mvc;
-using MyNetSensors.LogicalNodes;
-using MyNetSensors.LogicalNodesUI;
-using MyNetSensors.SerialControllers;
+using MyNetSensors.Nodes;
+using MyNetSensors.WebController.Code;
 
 namespace MyNetSensors.WebController.Controllers
 {
@@ -13,7 +12,7 @@ namespace MyNetSensors.WebController.Controllers
     {
         const string MAIN_PANEL_ID = "Main";
 
-        private LogicalNodesUIEngine engineUI = SerialController.logicalNodesUIEngine;
+        private UiNodesEngine engine = SystemController.uiNodesEngine;
 
 
         public IActionResult Index()
@@ -21,8 +20,13 @@ namespace MyNetSensors.WebController.Controllers
             return View();
         }
 
+
+
         public IActionResult Panel(string id)
         {
+            if (engine == null)
+                return HttpBadRequest();
+
             if (id == null || id == MAIN_PANEL_ID)
             {
                 id = MAIN_PANEL_ID;
@@ -30,7 +34,7 @@ namespace MyNetSensors.WebController.Controllers
             }
             else
             {
-                LogicalNodePanel panel = engineUI.GetPanel(id);
+                PanelNode panel = engine.GetPanel(id);
                 if (panel == null)
                     return HttpNotFound();
                 ViewBag.panelName = panel.Name;
@@ -42,13 +46,16 @@ namespace MyNetSensors.WebController.Controllers
 
         public IActionResult List()
         {
-            ViewBag.showMainPanel = engineUI.GetUINodesForPanel(MAIN_PANEL_ID).Any();
+            if (engine == null)
+                return HttpBadRequest();
 
-            List<LogicalNodePanel> allPanels = engineUI.GetPanels();
-            List<LogicalNodePanel> notEmptyPanels = new List<LogicalNodePanel>();
+            ViewBag.showMainPanel = engine.GetUINodesForPanel(MAIN_PANEL_ID).Any();
+
+            List<PanelNode> allPanels = engine.GetPanels();
+            List<PanelNode> notEmptyPanels = new List<PanelNode>();
             foreach (var panel in allPanels)
             {
-                if (engineUI.GetUINodesForPanel(panel.Id).Any())
+                if (engine.GetUINodesForPanel(panel.Id).Any())
                     notEmptyPanels.Add(panel);
             }
 
@@ -56,100 +63,13 @@ namespace MyNetSensors.WebController.Controllers
         }
 
 
-        //public List<LogicalNodePanel> GetPanels()
-        //{
-        //    if (engineUI == null)
-        //        return null;
-
-        //    return engineUI.GetPanels();
-        //}
-
-        public string GetNameForPanel(string id)
+        
+        public IActionResult Chart(string id, string autoscroll, string style, string start, string end)
         {
-            if (engineUI == null)
-                return null;
+            if (engine == null)
+                return HttpBadRequest();
 
-            LogicalNodePanel panel = engineUI.GetPanel(id);
-
-            return panel?.Name;
-        }
-
-        public List<LogicalNodeUI> GetUINodesForMainPage()
-        {
-            if (engineUI == null)
-                return null;
-
-            return engineUI.GetUINodesForMainPage();
-        }
-
-        public List<LogicalNodeUI> GetUINodesForPanel(string panelId)
-        {
-            if (engineUI == null)
-                return null;
-
-            return engineUI.GetUINodesForPanel(panelId);
-        }
-
-
-        public bool ClearLog(string nodeId)
-        {
-            engineUI.ClearLog(nodeId);
-            return true;
-        }
-
-
-        public bool TextBoxSend(string nodeId, string value)
-        {
-            engineUI.TextBoxSend(nodeId, value);
-            return true;
-        }
-
-
-
-        public bool ButtonClick(string nodeId)
-        {
-            engineUI.ButtonClick(nodeId);
-            return true;
-        }
-
-        public bool ToggleButtonClick(string nodeId)
-        {
-            engineUI.ToggleButtonClick(nodeId);
-            return true;
-        }
-
-        public bool SwitchClick(string nodeId)
-        {
-            engineUI.SwitchClick(nodeId);
-            return true;
-        }
-
-        public bool SliderChange(string nodeId, int value)
-        {
-            engineUI.SliderChange(nodeId, value);
-            return true;
-        }
-
-        public bool RGBSlidersChange(string nodeId, string value)
-        {
-            engineUI.RGBSlidersChange(nodeId, value);
-            return true;
-        }
-
-        public bool RGBWSlidersChange(string nodeId, string value)
-        {
-            engineUI.RGBWSlidersChange(nodeId, value);
-            return true;
-        }
-
-
-
-        public ActionResult Chart(string id, string autoscroll, string style, string start, string end)
-        {
-            if (engineUI == null)
-                return null;
-
-            LogicalNodeUIChart chart = engineUI.GetUINode(id) as LogicalNodeUIChart;
+            UiChartNode chart = engine.GetUINode(id) as UiChartNode;
             if (chart == null)
                 return new HttpNotFoundResult();
 
@@ -159,35 +79,6 @@ namespace MyNetSensors.WebController.Controllers
             ViewBag.end = end ?? "0";
 
             return View(chart);
-        }
-
-        public List<ChartData> GetChartData(string id)
-        {
-            LogicalNodeUIChart chart = engineUI.GetUINode(id) as LogicalNodeUIChart;
-            if (chart == null)
-                return null;
-
-            List<NodeState> nodeStates = chart.GetStates();
-
-            if (nodeStates == null || !nodeStates.Any())
-                return null;
-
-            //copy to array to prevent changing data error
-            NodeState[] nodeStatesArray=new NodeState[nodeStates.Count];
-            nodeStates.CopyTo(nodeStatesArray);
-
-            return nodeStatesArray.Select(item => new ChartData
-            {
-                x = $"{item.DateTime:yyyy-MM-dd HH:mm:ss.fff}",
-                y = item.State=="0"?"-0.01": item.State
-            }).ToList();
-        }
-
-
-        public bool ClearChart(string nodeId)
-        {
-            engineUI.ClearChart(nodeId);
-            return true;
         }
     }
 }

@@ -7,8 +7,8 @@
 //window.this_panel_id initialized from ViewBag
 
 
-var gatewayHardwareConnected = null;
-var signalRServerConnected = null;
+
+var signalRServerConnected;
 
 
 
@@ -17,23 +17,26 @@ var signalRServerConnected = null;
 $(function () {
 
     //configure signalr
-    var clientsHub = $.connection.clientsHub;
+    var clientsHub = $.connection.nodesEngineHub;
 
-    clientsHub.client.OnConnectedEvent = function () {
-        hardwareStateChanged(true);
+    clientsHub.client.OnConnected = function () {
+        noty({ text: 'Serial Gateway is connected.', type: 'alert', timeout: false });
     };
 
-    clientsHub.client.OnDisconnectedEvent = function () {
-        hardwareStateChanged(false);
+    clientsHub.client.OnDisconnected = function () {
+        noty({ text: 'Serial Gateway is disconnected!', type: 'error', timeout: false });
     };
 
-    clientsHub.client.OnRemoveAllNodesEvent = function () {
-        var n = noty({ text: 'Nodes deleted from the database!', type: 'error' });
-        $('#panelsContainer').html(null);
+    clientsHub.client.OnRemoveAllNodesAndLinks = function () {
+        window.location.replace("/Dashboard/");
+        noty({ text: 'All nodes have been deleted!', type: 'error' });
+        //$('#panelsContainer').html(null);
     };
 
 
-    clientsHub.client.OnNewUINodeEvent = function (node) {
+  
+
+    clientsHub.client.OnNewUiNode = function (node) {
         if (this_panel_id != null && this_panel_id != "") {
             if (node.PanelId != this_panel_id)
                 return;
@@ -43,7 +46,7 @@ $(function () {
         createNode(node);
     };
 
-    clientsHub.client.OnUINodeUpdatedEvent = function (node) {
+    clientsHub.client.OnUiNodeUpdated = function (node) {
         if (this_panel_id != null && this_panel_id != "") {
             if (node.PanelId != this_panel_id)
                 return;
@@ -57,7 +60,7 @@ $(function () {
         updateNode(node);
     };
 
-    clientsHub.client.OnUINodeRemoveEvent = function (node) {
+    clientsHub.client.OnRemoveUiNode = function (node) {
         if (this_panel_id != null && this_panel_id != "") {
             if (node.PanelId != this_panel_id)
                 return;
@@ -72,14 +75,22 @@ $(function () {
 
     $.connection.hub.stateChanged(function (change) {
         if (change.newState === $.signalR.connectionState.reconnecting) {
-            noty({ text: 'Web server is not responding!', type: 'error', timeout: false });
+            $("#panelsContainer").fadeOut(300);
+            noty({ text: 'Web server is not responding!', type: 'error' });
             signalRServerConnected = false;
         }
         else if (change.newState === $.signalR.connectionState.connected) {
             if (signalRServerConnected == false) {
-                noty({ text: 'Connected to web server.', type: 'alert', timeout: false });
-                getIsHardwareConnected();
-                getNodes();
+                noty({ text: 'Connected to web server.', type: 'alert' });
+                //waiting while server initialized and read db
+                setTimeout(function () {
+                    $("#panelsContainer").html(null);
+                    $("#panelsContainer").show();
+                    getNodes();
+                    getGatewayInfo();
+                }, 2000);
+
+
             }
             signalRServerConnected = true;
         }
@@ -89,46 +100,32 @@ $(function () {
     // connection.stateChanged(signalrConnectionStateChanged);
     //connection.start({ waitForPageLoad: true });
 
-    getIsHardwareConnected();
     getNodes();
+    getGatewayInfo();
 });
 
 
-
-function getIsHardwareConnected() {
+function getGatewayInfo() {
     $.ajax({
-        url: "/GatewayAPI/IsHardwareConnected/",
+        url: "/GatewayAPI/GetGatewayInfo/",
         type: "POST",
-        success: function (connected) {
-            hardwareStateChanged(connected);
+        success: function (gatewayInfo) {
+            if (gatewayInfo.state == 1 || gatewayInfo.state == 2) {
+                noty({ text: 'Serial Gateway is not connected!', type: 'error', timeout: false });
+            }
         }
     });
 }
 
 
 
-function hardwareStateChanged(connected) {
-    if (connected) {
-        $('#panelsContainer').fadeIn(elementsFadeTime);
-    } else {
-        $('#panelsContainer').fadeOut(elementsFadeTime);
-    }
-
-    if (connected && gatewayHardwareConnected === false) {
-        noty({ text: 'Gateway hardware is online.', type: 'alert', timeout: false });
-    } else if (!connected) {
-        noty({ text: 'Gateway hardware is offline!', type: 'error', timeout: false });
-    }
-
-    gatewayHardwareConnected = connected;
-}
 
 
 
 function getNodes() {
     if (window.this_panel_id == null || window.this_panel_id == "") {
         $.ajax({
-            url: "/Dashboard/GetUINodesForMainPage/",
+            url: "/DashboardAPI/GetUINodesForMainPage/",
             type: "POST",
             success: function (nodes) {
                 onReturnNodes(nodes);
@@ -136,7 +133,7 @@ function getNodes() {
         });
     } else {
         $.ajax({
-            url: "/Dashboard/GetUINodesForPanel/",
+            url: "/DashboardAPI/GetUINodesForPanel/",
             type: "POST",
             data: { 'panelId': window.this_panel_id },
             success: function (nodes) {
@@ -147,6 +144,8 @@ function getNodes() {
 }
 
 function onReturnNodes(nodes) {
+    $("#panelsContainer").html(null);
+
     if (!nodes || nodes.length == 0) {
         $('#empty-message').show();
         return;

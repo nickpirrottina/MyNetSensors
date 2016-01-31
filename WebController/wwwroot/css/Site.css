@@ -1,4 +1,10 @@
-﻿
+﻿/*error log message*/
+.connectbutton {
+    width: 150px;
+}
+
+
+
 
 /*error log message*/
 .error-log-message {
@@ -62,6 +68,10 @@ input[type="checkbox"].input-validation-error {
 .ui.button.nonbutton {
     padding: 0;
     opacity: 1 !important;
+}
+
+.ui.button > .icon:not(.button) {
+     margin: 0em ;
 }
 
 .nonvisible {

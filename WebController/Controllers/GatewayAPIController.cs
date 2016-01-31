@@ -9,7 +9,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNet.Mvc;
 using MyNetSensors.Gateways;
-using MyNetSensors.SerialControllers;
+using MyNetSensors.Gateways.MySensors.Serial;
+using MyNetSensors.WebController.Code;
 
 namespace MyNetSensors.WebController.Controllers
 {
@@ -17,7 +18,7 @@ namespace MyNetSensors.WebController.Controllers
 
     public class GatewayAPIController : Controller
     {
-        private Gateway gateway = SerialController.gateway;
+        private Gateway gateway = SystemController.gateway;
 
 
         public List<Node> GetNodes()
@@ -25,7 +26,7 @@ namespace MyNetSensors.WebController.Controllers
             return gateway.GetNodes();
         }
 
-        public bool IsHardwareConnected()
+        public bool IsConnected()
         {
             if (gateway == null)
                 return false;
@@ -60,32 +61,22 @@ namespace MyNetSensors.WebController.Controllers
             return true;
         }
 
-
-
-
+        
         public GatewayInfo GetGatewayInfo()
         {
+            if (gateway == null)
+                return null;
+
             return gateway.GetGatewayInfo();
         }
-
-
+        
 
         public bool UpdateNodeSettings(Node node)
         {
-            gateway.UpdateNodeSettings(node);
+           // gateway.UpdateNode(node);
             return true;
         }
-
-
-
-
-
-
-        public bool UpdateNodesTasks()
-        {
-            SerialController.nodesTasksEngine.GetTasksFromRepository();
-            return true;
-        }
+        
 
         public bool RemoveNode(int nodeId)
         {
@@ -99,41 +90,36 @@ namespace MyNetSensors.WebController.Controllers
         public async Task<bool> RemoveAllNodes()
         {
             gateway.RemoveAllNodes();
+            return true;
+        }
+        
 
+        public bool DisableTasks()
+        {
+            SystemController.uiTimerNodesEngine.DisableAllTasks();
             return true;
         }
 
 
-
-
-
-
-  
-
-
-
-        public ActionResult DisableTasks()
+        public bool RemoveAllTasks()
         {
-            SerialController.nodesTasksDb.DisableTasks();
-            
-            UpdateNodesTasks();
+            SystemController.uiTimerNodesEngine.RemoveAllTasks();
+            return true;
+        }
+        
 
-             return Json(true);
+        public async Task<bool> Connect()
+        {
+            string portname = SystemController.gateway.serialPort.GetPortName();
+            await SystemController.gateway.Connect(portname);
+            return true;
         }
 
-        public async Task<ActionResult> RemoveAllTasks()
+        public bool Disconnect()
         {
-            DisableTasks();
-            await Task.Delay(1000);
-            SerialController.nodesTasksDb.RemoveAllTasks();
-
-            UpdateNodesTasks();
-             return Json(true);
+            SystemController.gateway.Disconnect();
+            return true;
         }
-
-
-
-     
 
     }
 }

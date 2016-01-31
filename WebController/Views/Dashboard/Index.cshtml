@@ -21,8 +21,6 @@
         @if (ViewBag.panelId == null)
         {
             <a asp-action="List">Panels</a>
-            @:|
-            <a asp-controller="Tasks" asp-action="List">Tasks</a>
         }
         else
         {
@@ -49,18 +47,12 @@
                 <a asp-controller="NodesEditor" asp-action="Panel" asp-route-id="@ViewBag.panelId">Nodes Editor</a>
                 @:.
             }
-
-
-
-
         </p>
-
-
     </div>
 
 
 
-    <div class="ui stackable centered grid" id="panelsContainer" style="display: none;">
+    <div class="ui stackable centered grid" id="panelsContainer">
     </div>
 
 </div>
@@ -210,19 +202,29 @@
 
 <script id="chartTemplate" type="text/x-handlebars-template">
     <div class="ui attached clearing segment" id="node-{{Id}}">
-        <span id="chartName-{{Id}}"></span>
         <div class="ui mini right floated basic buttons">
             <button type="button" class="ui button" id="chart-clear-{{Id}}">Clear</button>
             <a href="/Dashboard/Chart/{{Id}}" class="ui button" id="chart-open-{{Id}}">Open</a>
             <button type="button" class="ui button" id="chart-all-{{Id}}">All</button>
             <button type="button" class="ui button" id="chart-now-{{Id}}">Now</button>
         </div>
+        <span id="chartName-{{Id}}"></span>
         <br />
         <br />
         <div id="chart-panel-{{Id}}-">
-                <div id="chart-body-{{Id}}"></div>
-        </div>       
-        
+            <div id="chart-body-{{Id}}"></div>
+        </div>
+
+    </div>
+</script>
+
+
+<script id="timerTemplate" type="text/x-handlebars-template">
+    <div class="ui attached clearing segment" id="node-{{Id}}">
+        <span id="timer-name-{{Id}}"></span>
+        <div class="ui small right floated basic buttons">
+            <a href="/UITimer/Tasks/{{Id}}" class="ui button" id="timer-open-{{Id}}">Open</a>
+        </div>
     </div>
 </script>
 
@@ -246,5 +248,6 @@
     <script src="~/js/dashboard/mynetsensors-dashboard-slider.js"></script>
     <script src="~/js/dashboard/mynetsensors-dashboard-rgbsliders.js"></script>
     <script src="~/js/dashboard/mynetsensors-dashboard-chart.js"></script>
+    <script src="~/js/dashboard/mynetsensors-dashboard-timer.js"></script>
 }
 

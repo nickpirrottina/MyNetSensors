@@ -9,11 +9,11 @@ using Microsoft.AspNet.Http;
 using Microsoft.AspNet.Identity.EntityFramework;
 using Microsoft.AspNet.SignalR.Infrastructure;
 using Microsoft.Data.Entity;
+using Microsoft.Data.Entity.Query.ExpressionTranslators.Internal;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using MyNetSensors.Repositories.EF.SQLite;
-using MyNetSensors.SerialControllers;
 using MyNetSensors.WebController.Code;
 using MyNetSensors.WebController.Models;
 using MyNetSensors.WebController.Services;
@@ -42,47 +42,52 @@ namespace MyNetSensors.WebController
             Configuration = builder.Build();
         }
 
+        private IServiceCollection services;
 
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
             //database
-            bool useMSSQL = Boolean.Parse(Configuration["DataBase:UseMSSQL"]);
+            bool dataBaseEnabled = Boolean.Parse(Configuration["DataBase:Enable"]);
+            bool useInternalDb = Boolean.Parse(Configuration["DataBase:UseInternalDb"]);
 
-            if (useMSSQL)
+            if (dataBaseEnabled)
             {
-                string connectionString = Configuration["DataBase:MSSQLConnectionString"];
-                services.AddEntityFramework()
-                    .AddSqlServer()
-                    .AddDbContext<ApplicationDbContext>(options =>
-                        options.UseSqlServer(connectionString))
-                    .AddDbContext<LogicalNodesDbContext>(options =>
-                        options.UseSqlServer(connectionString))
-                    .AddDbContext<LogicalNodesStatesDbContext>(options =>
-                        options.UseSqlServer(connectionString))
-                    .AddDbContext<NodesDbContext>(options =>
-                        options.UseSqlServer(connectionString))
-                    .AddDbContext<NodesMessagesDbContext>(options =>
-                        options.UseSqlServer(connectionString))
-                    .AddDbContext<NodesTasksDbContext>(options =>
-                        options.UseSqlServer(connectionString));
-            }
-            else
-            {
-                services.AddEntityFramework()
-                    .AddSqlite()
-                    .AddDbContext<ApplicationDbContext>(options =>
-                        options.UseSqlite("Data Source=Application.sqlite"))
-                    .AddDbContext<LogicalNodesDbContext>(options =>
-                        options.UseSqlite("Data Source=LogicalNodes.sqlite"))
-                    .AddDbContext<LogicalNodesStatesDbContext>(options =>
-                        options.UseSqlite("Data Source=LogicalNodesStates.sqlite"))
-                    .AddDbContext<NodesDbContext>(options =>
-                        options.UseSqlite("Data Source=Nodes.sqlite"))
-                    .AddDbContext<NodesMessagesDbContext>(options =>
-                        options.UseSqlite("Data Source=NodesMessages.sqlite"))
-                    .AddDbContext<NodesTasksDbContext>(options =>
-                        options.UseSqlite("Data Source=NodesTasks.sqlite"));
+                if (useInternalDb)
+                {
+                    services.AddEntityFramework()
+                        .AddSqlite()
+                        .AddDbContext<ApplicationDbContext>(options =>
+                            options.UseSqlite("Data Source=Application.sqlite"))
+                        .AddDbContext<NodesDbContext>(options =>
+                            options.UseSqlite("Data Source=Nodes.sqlite"))
+                        .AddDbContext<NodesStatesHistoryDbContext>(options =>
+                            options.UseSqlite("Data Source=NodesStatesHistory.sqlite"))
+                        .AddDbContext<MySensorsNodesDbContext>(options =>
+                            options.UseSqlite("Data Source=MySensorsNodes.sqlite"))
+                        .AddDbContext<MySensorsMessagesDbContext>(options =>
+                            options.UseSqlite("Data Source=MySensorsMessages.sqlite"))
+                        .AddDbContext<UITimerNodesDbContext>(options =>
+                            options.UseSqlite("Data Source=UITimerNodes.sqlite"));
+                }
+                else
+                {
+                    string connectionString = Configuration["DataBase:ExternalDbConnectionString"];
+                    services.AddEntityFramework()
+                        .AddSqlServer()
+                        .AddDbContext<ApplicationDbContext>(options =>
+                            options.UseSqlServer(connectionString))
+                        .AddDbContext<NodesDbContext>(options =>
+                            options.UseSqlServer(connectionString))
+                        .AddDbContext<NodesStatesHistoryDbContext>(options =>
+                            options.UseSqlServer(connectionString))
+                        .AddDbContext<MySensorsNodesDbContext>(options =>
+                            options.UseSqlServer(connectionString))
+                        .AddDbContext<MySensorsMessagesDbContext>(options =>
+                            options.UseSqlServer(connectionString))
+                        .AddDbContext<UITimerNodesDbContext>(options =>
+                            options.UseSqlServer(connectionString));
+                }
             }
 
             services.AddIdentity<ApplicationUser, IdentityRole>()
@@ -107,11 +112,7 @@ namespace MyNetSensors.WebController
             IHostingEnvironment env,
             ILoggerFactory loggerFactory,
             IConnectionManager connectionManager,
-            LogicalNodesDbContext logicalNodesDbContext,
-            LogicalNodesStatesDbContext logicalNodesStatesDbContext,
-            NodesDbContext nodesDbContext,
-            NodesMessagesDbContext nodesMessagesDbContext,
-            NodesTasksDbContext nodesTasksDbContext
+            IServiceProvider serviceProvider
             )
         {
             //Set up dot instead of comma in float values
@@ -195,42 +196,19 @@ namespace MyNetSensors.WebController
                         name: "default",
                         template: "{controller=Home}/{action=Index}/{id?}/{id2?}/{id3?}");
                 });
+
+
+                NodesEngineSignalRServer.Start(connectionManager);
+                MySensorsSignalRServer.Start(connectionManager);
             }
 
-
-            SignalRServer.Start(connectionManager);
-            SerialControllerConfigurator.logicalNodesDbContext = logicalNodesDbContext;
-            SerialControllerConfigurator.logicalNodesStatesDbContext = logicalNodesStatesDbContext;
-            SerialControllerConfigurator.nodesDbContext = nodesDbContext;
-            SerialControllerConfigurator.nodesMessagesDbContext = nodesMessagesDbContext;
-            SerialControllerConfigurator.nodesTasksDbContext = nodesTasksDbContext;
-
-            bool firstRun = Boolean.Parse(Configuration["FirstRun"]);
-            if (!firstRun)
-                SerialControllerConfigurator.Start(Configuration);
-            else
-            {
-                Console.ForegroundColor = ConsoleColor.White;
-                Console.WriteLine("\nThis is the first run of the system. \nYou can configure MyNetSensors from the web interface.\n"); // <-- see note
-                Console.ForegroundColor = ConsoleColor.Gray;
-
-            }
-
+            SystemController.Start(Configuration, serviceProvider);
         }
-
-
-
-
 
         // Entry point for the application.
         public static void Main(string[] args)
         {
             WebApplication.Run<Startup>(args);
         }
-
-
-
-
-
     }
 }

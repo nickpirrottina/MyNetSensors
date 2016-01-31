@@ -6,14 +6,11 @@ using System.Threading.Tasks;
 using Microsoft.AspNet.Mvc;
 using MyNetSensors.Gateways;
 using LiteGraph;
-using MyNetSensors.LogicalNodes;
+using MyNetSensors.Nodes;
 using MyNetSensors.Repositories.EF.SQLite;
-//using MyNetSensors.LogicalNodes;
-using MyNetSensors.SerialControllers;
+using MyNetSensors.WebController.Code;
 using Newtonsoft.Json;
-using Input = LiteGraph.Input;
-using Node = MyNetSensors.Gateways.Node;
-using Output = LiteGraph.Output;
+
 
 namespace MyNetSensors.WebController.Controllers
 {
@@ -22,21 +19,27 @@ namespace MyNetSensors.WebController.Controllers
     {
         const string MAIN_PANEL_ID = "Main";
 
-        private LogicalNodesEngine engine = SerialController.logicalNodesEngine;
+        private NodesEngine engine = SystemController.nodesEngine;
 
-        public IActionResult Index()
+        public IActionResult Index(bool split)
         {
+            ViewBag.split = split;
             ViewBag.panelId = MAIN_PANEL_ID;
 
             return View();
         }
 
-        public IActionResult Panel(string id)
+        public IActionResult Panel(string id, bool split)
         {
+            if (engine == null)
+                return HttpBadRequest();
+
+            ViewBag.split = split;
+
             if (id == null || id== MAIN_PANEL_ID)
                 return RedirectToAction("Index");
 
-            LogicalNodePanel panel = engine.GetPanelNode(id);
+            PanelNode panel = engine.GetPanelNode(id);
 
             if (panel == null)
                 return HttpNotFound();
@@ -45,7 +48,7 @@ namespace MyNetSensors.WebController.Controllers
             ViewBag.ownerPanelId = panel.PanelId;
 
             //create menu stack
-            List<LogicalNodePanel> panelsStack = new List<LogicalNodePanel>();
+            List<PanelNode> panelsStack = new List<PanelNode>();
 
             bool findNext = true;
             while (findNext)
@@ -66,5 +69,14 @@ namespace MyNetSensors.WebController.Controllers
             return View("Index");
         }
 
+
+        public IActionResult Split(string id)
+        {
+            if (id == null)
+                ViewBag.route = "";
+            else
+                ViewBag.route = "Panel/" + id;
+            return View();
+        }
     }
 }
