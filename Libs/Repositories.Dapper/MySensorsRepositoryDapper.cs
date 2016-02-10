@@ -11,7 +11,7 @@ using System.Linq;
 using System.Timers;
 using Dapper;
 using MyNetSensors.Gateways;
-using MyNetSensors.Gateways.MySensors.Serial;
+using MyNetSensors.Gateways.MySensors;
 
 namespace MyNetSensors.Repositories.Dapper
 {
@@ -174,7 +174,6 @@ namespace MyNetSensors.Repositories.Dapper
                                "VALUES(@Id, @registered, @lastSeen, @isRepeatingNode, @name, @version, @batteryLevel)";
 
                 db.Query(sqlQuery, node);
-                // gateway.SetNodeDbId(node.nodeId, id);
             }
 
             return node.Id;

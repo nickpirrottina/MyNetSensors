@@ -11,12 +11,10 @@ namespace MyNetSensors.Nodes
 
     public class MathMinusNode : Node
     {
-        /// <summary>
-        /// Math Minus (2 inputs, 1 output).
-        /// </summary>
+
         public MathMinusNode() : base(2, 1)
         {
-            this.Title = "Math Minus";
+            this.Title = "Minus";
             this.Type = "Math/Minus";
 
             Inputs[0].Type = DataType.Number;
@@ -32,8 +30,7 @@ namespace MyNetSensors.Nodes
         {
             if (Inputs.Any(i => i.Value == null))
             {
-                LogInfo("[NULL]");
-                Outputs[0].Value = null;
+                ResetOutputs();
                 return;
             }
 
@@ -41,7 +38,6 @@ namespace MyNetSensors.Nodes
             Double b = Double.Parse(Inputs[1].Value);
             Double c = a - b;
 
-            LogInfo($"[{a}] - [{b}] = [{c}]");
             Outputs[0].Value = c.ToString();
         }
     }

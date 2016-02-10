@@ -11,9 +11,7 @@ namespace MyNetSensors.Nodes
 
     public class OperationMixerNode : Node
     {
-        /// <summary>
-        /// OperationMixerNode (2 inputs, 1 output).
-        /// </summary>
+
         public OperationMixerNode() : base(2, 1)
         {
             this.Title = "Mixer";
@@ -33,7 +31,6 @@ namespace MyNetSensors.Nodes
             if (Inputs[1].Value != null) mixOut = mixOut + Inputs[1].Value;
 
             Outputs[0].Value = mixOut;
-            LogInfo($"[{mixOut??"NULL"}]");
         }
     }
 }

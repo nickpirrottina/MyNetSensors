@@ -13,9 +13,7 @@ namespace MyNetSensors.Nodes
 {
     public class OperationGateNode : Node
     {
-        /// <summary>
-        /// Gate (2 input, 1 output).
-        /// </summary>
+
         public OperationGateNode() : base(2, 1)
         {
             this.Title = "Gate";
@@ -37,21 +35,11 @@ namespace MyNetSensors.Nodes
         {
             if (Inputs.Any(i => i.Value == null))
             {
-                LogInfo("[NULL]");
-                Outputs[0].Value = null;
+                ResetOutputs();
                 return;
             }
 
-            if (Inputs[1].Value == "1")
-            {
-                LogInfo($"[{Inputs[0].Value}]");
-                Outputs[0].Value = Inputs[0].Value;
-            }
-            else
-            {
-                Outputs[0].Value = null;
-                LogInfo($"[NULL]");
-            }
+            Outputs[0].Value = Inputs[1].Value == "1" ? Inputs[0].Value : null;
         }
     }
 }

@@ -13,12 +13,10 @@ namespace MyNetSensors.Nodes
 {
     public class MathSqrtNode : Node
     {
-        /// <summary>
-        /// Math Sqrt (1 inputs, 1 output).
-        /// </summary>
+
         public MathSqrtNode() : base(1, 1)
         {
-            this.Title = "Math Sqrt";
+            this.Title = "Sqrt";
             this.Type = "Math/Sqrt";
 
             Inputs[0].Type = DataType.Number;
@@ -33,8 +31,7 @@ namespace MyNetSensors.Nodes
         {
             if (Inputs.Any(i => i.Value == null))
             {
-                LogInfo("[NULL]");
-                Outputs[0].Value = null;
+                ResetOutputs();
                 return;
             }
 
@@ -43,13 +40,11 @@ namespace MyNetSensors.Nodes
                 Double a = Double.Parse(Inputs[0].Value);
                 Double b = Math.Sqrt(a);
 
-                LogInfo($"Sqrt [{a}] = [{b}]");
                 Outputs[0].Value = b.ToString();
             }
             catch
             {
                 Outputs[0].Value = null;
-                LogInfo("[NULL]");
             }
         }
     }

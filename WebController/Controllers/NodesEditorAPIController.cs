@@ -8,9 +8,11 @@ using System.Threading.Tasks;
 using Microsoft.AspNet.Mvc;
 using MyNetSensors.Gateways;
 using LiteGraph;
+using Microsoft.AspNet.Authorization;
 using Microsoft.AspNet.Http;
 using Microsoft.AspNet.Http.Features;
 using MyNetSensors.Nodes;
+using MyNetSensors.Users;
 using MyNetSensors.WebController.Code;
 using Newtonsoft.Json;
 using Link = MyNetSensors.Nodes.Link;
@@ -18,6 +20,7 @@ using Node = MyNetSensors.Nodes.Node;
 
 namespace MyNetSensors.WebController.Controllers
 {
+
     public class NodesEditorAPIController : Controller
     {
         const string MAIN_PANEL_ID = "Main";
@@ -26,22 +29,27 @@ namespace MyNetSensors.WebController.Controllers
         private UiNodesEngine uiEngine = SystemController.uiNodesEngine;
 
 
-        public List<LiteGraph.Node> GetNodes(string panelId)
+
+        [Authorize(UserClaims.EditorObserver)]
+        public async Task<List<LiteGraph.Node>> GetNodes(string panelId)
         {
-            if (engine == null)
-                return null;
+            return await Task.Run(() =>
+            {
+                if (engine == null)
+                    return null;
 
-            if (panelId == null)
-                panelId = MAIN_PANEL_ID;
+                if (panelId == null)
+                    panelId = MAIN_PANEL_ID;
 
-            List<Node> nodes = engine.GetNodes();
-            if (nodes == null || !nodes.Any())
-                return null;
+                List<Node> nodes = engine.GetNodes();
+                if (nodes == null || !nodes.Any())
+                    return null;
 
-            return (
-                from node in nodes
-                where node.PanelId == panelId
-                select ConvertNodeToLiteGraphNode(node)).ToList();
+                return (
+                    from node in nodes
+                    where node.PanelId == panelId
+                    select ConvertNodeToLiteGraphNode(node)).ToList();
+            });
         }
 
 
@@ -59,10 +67,10 @@ namespace MyNetSensors.WebController.Controllers
             litegraphNode.properties["ObjectType"] = node.GetType().ToString();
 
             if (node.Position != null)
-                litegraphNode.pos = new[] { node.Position.X, node.Position.Y };
+                litegraphNode.pos = new[] {node.Position.X, node.Position.Y};
 
             if (node.Size != null)
-                litegraphNode.size = new[] { node.Size.Width, node.Size.Height };
+                litegraphNode.size = new[] {node.Size.Width, node.Size.Height};
 
             litegraphNode.inputs = new List<LiteGraph.Input>();
             litegraphNode.outputs = new List<LiteGraph.Output>();
@@ -113,65 +121,26 @@ namespace MyNetSensors.WebController.Controllers
                 }
             }
 
-            if (node is UiNode)
-            {
-                UiNode n = (UiNode)node;
-                litegraphNode.properties["Name"] = n.Name;
-                litegraphNode.properties["ShowOnMainPage"] = n.ShowOnMainPage ? "true" : "false";
-            }
+            if (node.Settings!=null && node.Settings.Count>0)
+            litegraphNode.properties["Settings"] = JsonConvert.SerializeObject(node.Settings);
 
-            if (node is UiSliderNode)
-            {
-                UiSliderNode n = (UiSliderNode)node;
-                litegraphNode.properties["Min"] = n.Min.ToString();
-                litegraphNode.properties["Max"] = n.Max.ToString();
-            }
-
+            
             if (node is UiChartNode)
             {
-                UiChartNode n = (UiChartNode)node;
+                UiChartNode n = (UiChartNode) node;
                 litegraphNode.properties["State"] = n.State.ToString();
-                litegraphNode.properties["WriteInDatabase"] = n.WriteInDatabase ? "true" : "false";
-                litegraphNode.properties["UpdateInterval"] = n.UpdateInterval.ToString();
             }
 
-            if (node is ConstantNode)
-            {
-                ConstantNode n = (ConstantNode)node;
-                litegraphNode.properties["Value"] = n.Value;
-            }
+            if (node.Settings.ContainsKey("Name") 
+                &&!string.IsNullOrEmpty(node.Settings["Name"].Value))
+                litegraphNode.title += " [" + node.Settings["Name"].Value + "]";
 
             if (node is PanelNode)
             {
-                PanelNode n = (PanelNode)node;
-                litegraphNode.properties["PanelName"] = n.Name;
+                litegraphNode.title = node.Settings["Name"].Value;
             }
 
-            if (node is PanelInputNode)
-            {
-                PanelInputNode n = (PanelInputNode)node;
-                litegraphNode.properties["Name"] = n.Name;
-            }
 
-            if (node is PanelOutputNode)
-            {
-                PanelOutputNode n = (PanelOutputNode)node;
-                litegraphNode.properties["Name"] = n.Name;
-            }
-
-            if (node is ConnectionReceiverNode)
-            {
-                ConnectionReceiverNode n = (ConnectionReceiverNode)node;
-                litegraphNode.properties["Channel"] = n.Channel.ToString();
-                litegraphNode.properties["Name"] = n.Channel.ToString();
-            }
-
-            if (node is ConnectionTransmitterNode)
-            {
-                ConnectionTransmitterNode n = (ConnectionTransmitterNode)node;
-                litegraphNode.properties["Channel"] = n.Channel.ToString();
-                litegraphNode.properties["Name"] = n.Channel.ToString();
-            }
 
             return litegraphNode;
         }
@@ -195,19 +164,24 @@ namespace MyNetSensors.WebController.Controllers
         }
 
 
-        public List<LiteGraph.Link> GetLinks(string panelId)
+
+        [Authorize(UserClaims.EditorObserver)]
+        public async Task<List<LiteGraph.Link>> GetLinks(string panelId)
         {
-            if (engine == null)
-                return null;
+            return await Task.Run(() =>
+            {
+                if (engine == null)
+                    return null;
 
-            List<Link> links = engine.GetLinks();
-            if (links == null || !links.Any())
-                return null;
+                List<Link> links = engine.GetLinks();
+                if (links == null || !links.Any())
+                    return null;
 
-            return (
-                from link in links
-                where link.PanelId == panelId
-                select ConvertLinkToLiteGraphLink(link)).ToList();
+                return (
+                    from link in links
+                    where link.PanelId == panelId
+                    select ConvertLinkToLiteGraphLink(link)).ToList();
+            });
         }
 
 
@@ -238,69 +212,88 @@ namespace MyNetSensors.WebController.Controllers
         }
 
 
-        public bool RemoveLink(LiteGraph.Link link)
+
+        [Authorize(UserClaims.EditorEditor)]
+        public async Task<bool> RemoveLink(LiteGraph.Link link)
         {
-            if (engine == null)
-                return false;
-
-            if (link.origin_id == null || link.target_id == null)
-                return false;
-
-            Node outNode = SystemController.nodesEngine.GetNode(link.origin_id);
-            Node inNode = SystemController.nodesEngine.GetNode(link.target_id);
-            if (outNode == null || inNode == null)
+            return await Task.Run(() =>
             {
-                engine.LogEngineError($"Can`t remove link from [{link.origin_id}] to [{link.target_id}]. Does not exist.");
-                return false;
-            }
-            engine.RemoveLink(outNode.Outputs[link.origin_slot], inNode.Inputs[link.target_slot]);
+                if (engine == null)
+                    return false;
 
-            return true;
+                if (link.origin_id == null || link.target_id == null)
+                    return false;
+
+                Node outNode = SystemController.nodesEngine.GetNode(link.origin_id);
+                Node inNode = SystemController.nodesEngine.GetNode(link.target_id);
+                if (outNode == null || inNode == null)
+                {
+                    engine.LogEngineError(
+                        $"Can`t remove link from [{link.origin_id}] to [{link.target_id}]. Does not exist.");
+                    return false;
+                }
+                engine.RemoveLink(outNode.Outputs[link.origin_slot], inNode.Inputs[link.target_slot]);
+
+                return true;
+            });
         }
 
-        public bool CreateLink(LiteGraph.Link link)
+
+
+        [Authorize(UserClaims.EditorEditor)]
+        public async Task<bool> CreateLink(LiteGraph.Link link)
         {
-            if (engine == null)
-                return false;
-
-            Node outNode = SystemController.nodesEngine.GetNode(link.origin_id);
-            Node inNode = SystemController.nodesEngine.GetNode(link.target_id);
-
-            if (outNode == null || inNode == null)
+            return await Task.Run(() =>
             {
-                engine.LogEngineError($"Can`t create link from [{link.origin_id}] to [{link.target_id}]. Does not exist.");
-                return false;
-            }
+                if (engine == null)
+                    return false;
 
-            engine.AddLink(outNode.Outputs[link.origin_slot], inNode.Inputs[link.target_slot]);
-            return true;
+                Node outNode = SystemController.nodesEngine.GetNode(link.origin_id);
+                Node inNode = SystemController.nodesEngine.GetNode(link.target_id);
+
+                if (outNode == null || inNode == null)
+                {
+                    engine.LogEngineError(
+                        $"Can`t create link from [{link.origin_id}] to [{link.target_id}]. Does not exist.");
+                    return false;
+                }
+
+                engine.AddLink(outNode.Outputs[link.origin_slot], inNode.Inputs[link.target_slot]);
+                return true;
+            });
         }
 
-        public bool AddNode(LiteGraph.Node node)
+
+
+        [Authorize(UserClaims.EditorEditor)]
+        public async Task<bool> AddNode(LiteGraph.Node node)
         {
-            if (engine == null)
-                return false;
-
-            string type = node.properties["ObjectType"];
-            string assemblyName = node.properties["Assembly"];
-
-            Node newNode = AddNode(type, assemblyName);
-
-            if (newNode == null)
+            return await Task.Run(() =>
             {
-                engine.LogEngineError($"Can`t create node [{node.properties["ObjectType"]}]. Type does not exist.");
-                return false;
-            }
+                if (engine == null)
+                    return false;
 
-            newNode.Position = new Position { X = node.pos[0], Y = node.pos[1] };
-            if (node.size.Length == 2)
-                newNode.Size = new Size { Width = node.size[0], Height = node.size[1] };
-            //newNode.Id = node.id;
-            newNode.PanelId = node.panel_id ?? MAIN_PANEL_ID;
+                string type = node.properties["ObjectType"];
+                string assemblyName = node.properties["Assembly"];
 
-            engine.AddNode(newNode);
+                Node newNode = AddNode(type, assemblyName);
 
-            return true;
+                if (newNode == null)
+                {
+                    engine.LogEngineError($"Can`t create node [{node.properties["ObjectType"]}]. Type does not exist.");
+                    return false;
+                }
+
+                newNode.Position = new Position {X = node.pos[0], Y = node.pos[1]};
+                if (node.size.Length == 2)
+                    newNode.Size = new Size {Width = node.size[0], Height = node.size[1]};
+                //newNode.Id = node.id;
+                newNode.PanelId = node.panel_id ?? MAIN_PANEL_ID;
+
+                engine.AddNode(newNode);
+
+                return true;
+            });
         }
 
         private Node AddNode(string type, string assemblyName)
@@ -308,7 +301,7 @@ namespace MyNetSensors.WebController.Controllers
             try
             {
                 var newObject = Activator.CreateInstance(assemblyName, type);
-                return (Node)newObject.Unwrap();
+                return (Node) newObject.Unwrap();
             }
             catch
             {
@@ -318,349 +311,267 @@ namespace MyNetSensors.WebController.Controllers
 
 
 
-        public bool CloneNode(string id)
+
+
+        [Authorize(UserClaims.EditorEditor)]
+        public async Task<bool> CloneNode(string id)
         {
-            if (engine == null)
-                return false;
-
-            engine.CloneNode(id);
-
-            return true;
-        }
-
-
-
-
-        public bool RemoveNode(LiteGraph.Node node)
-        {
-            if (engine == null)
-                return false;
-
-            Node oldNode = engine.GetNode(node.id);
-            if (oldNode == null)
+            return await Task.Run(() =>
             {
-                engine.LogEngineError($"Can`t remove node [{node.id}]. Does not exist.");
-                return false;
-            }
+                if (engine == null)
+                    return false;
 
-            engine.RemoveNode(oldNode);
-            return true;
-        }
-
-        public bool UpdateNode(LiteGraph.Node node)
-        {
-            if (engine == null)
-                return false;
-
-            Node oldNode = engine.GetNode(node.id);
-            if (oldNode == null)
-            {
-                engine.LogEngineError($"Can`t update node [{node.id}]. Does not exist.");
-                return false;
-            }
-
-            oldNode.Position = new Position { X = node.pos[0], Y = node.pos[1] };
-            oldNode.Size = new Size { Width = node.size[0], Height = node.size[1] };
-
-            engine.UpdateNode(oldNode);
-            engine.UpdateNodeInDb(oldNode);
-
-            return true;
-        }
-
-
-        public bool PanelSettings(string id, string panelname)
-        {
-            Node n = engine.GetNode(id);
-            if (n == null)
-            {
-                engine.LogEngineError($"Can`t set settings for Panel [{id}]. Does not exist.");
-                return false;
-            }
-
-            PanelNode node = (PanelNode)n;
-            node.Name = panelname;
-            engine.UpdateNode(node);
-            engine.UpdateNodeInDb(node);
-
-            return true;
-        }
-
-        public bool InputOutputSettings(string id, string name)
-        {
-            Node n = engine.GetNode(id);
-            if (n == null)
-            {
-                engine.LogEngineError($"Can`t set settings for Input/Output [{id}]. Does not exist.");
-                return false;
-            }
-
-            if (n is PanelInputNode)
-            {
-                PanelInputNode node = (PanelInputNode)n;
-                node.UpdateName(name);
-            }
-
-            if (n is PanelOutputNode)
-            {
-                PanelOutputNode node = (PanelOutputNode)n;
-                node.UpdateName(name);
-            }
-
-            return true;
-        }
-
-        public bool UINodeSettings(string id, string name, bool show)
-        {
-            Node n = engine.GetNode(id);
-            if (n == null)
-            {
-                engine.LogEngineError($"Can`t set settings for Node [{id}]. Does not exist.");
-                return false;
-            }
-
-            UiNode node = (UiNode)n;
-            node.Name = name;
-            node.ShowOnMainPage = show;
-            engine.UpdateNode(node);
-            engine.UpdateNodeInDb(node);
-
-            return true;
-        }
-
-
-        public bool UISliderSettings(string id, string name, int min, int max, bool show)
-        {
-            Node n = engine.GetNode(id);
-            if (n == null)
-            {
-                engine.LogEngineError($"Can`t set settings for Node [{id}]. Does not exist.");
-                return false;
-            }
-            if (min >= max)
-            {
-                engine.LogEngineError($"Can`t set settings for Node [{id}]. Min must be > Max.");
-                return false;
-            }
-
-            UiSliderNode node = (UiSliderNode)n;
-            node.Name = name;
-            node.Min = min;
-            node.Max = max;
-            node.ShowOnMainPage = show;
-            engine.UpdateNode(node);
-            engine.UpdateNodeInDb(node);
-
-            return true;
-        }
-
-        public bool ConstantSettings(string id, string value)
-        {
-            Node n = engine.GetNode(id);
-            if (n == null)
-            {
-                engine.LogEngineError($"Can`t set settings for Node [{id}]. Does not exist.");
-                return false;
-            }
-
-            ConstantNode node = (ConstantNode)n;
-            node.SetValue(value);
-            engine.UpdateNode(node);
-            engine.UpdateNodeInDb(node);
-
-            return true;
-        }
-
-
-        public bool UIChartSettings(string id, string name, bool show, bool writeInDatabase, int updateInterval)
-        {
-            Node n = engine.GetNode(id);
-            if (n == null)
-            {
-                engine.LogEngineError($"Can`t set settings for Node [{id}]. Does not exist.");
-                return false;
-            }
-
-            UiChartNode node = (UiChartNode)n;
-
-            if (node.WriteInDatabase && !writeInDatabase)
-                uiEngine.ClearChart(node.Id);
-
-            node.Name = name;
-            node.ShowOnMainPage = show;
-            node.WriteInDatabase = writeInDatabase;
-            node.UpdateInterval = updateInterval;
-            engine.UpdateNode(node);
-            engine.UpdateNodeInDb(node);
-
-
-            return true;
-        }
-
-        public string SerializePanel(string id)
-        {
-            if (engine == null)
-                return null;
-
-            PanelNode node = engine.GetPanelNode(id);
-            if (node == null)
-                return null;
-
-            return NodesEngineSerializer.SerializePanel(id, engine);
-        }
-
-
-        public IActionResult SerializePanelToFile(string id)
-        {
-            if (engine == null)
-                return null;
-
-            PanelNode node = engine.GetPanelNode(id);
-            if (node == null)
-                return null;
-
-            string json = NodesEngineSerializer.SerializePanel(id, engine);
-
-            return File(Encoding.UTF8.GetBytes(json), "text/plain", node.Name + ".json");
-        }
-
-
-
-
-      
-
-
-
-        public bool ImportPanelJson(string json, int x, int y, string ownerPanelId)
-        {
-            if (engine == null)
-                return false;
-
-            try
-            {
-                List<Node> nodes;
-                List<Link> links;
-                NodesEngineSerializer.DeserializePanel(json, out nodes, out links);
-
-                //set position to panel
-                nodes[0].Position = new Position(x, y);
-                nodes[0].PanelId = ownerPanelId;
-
-                engine.GenerateNewIds(ref nodes, ref links);
-
-                foreach (var node in nodes)
-                    engine.AddNode(node);
-
-                foreach (var link in links)
-                    engine.AddLink(link.OutputId, link.InputId);
+                engine.CloneNode(id);
 
                 return true;
-            }
-            catch
+            });
+        }
+
+
+
+
+
+
+        [Authorize(UserClaims.EditorEditor)]
+        public async Task<bool> RemoveNode(LiteGraph.Node node)
+        {
+            return await Task.Run(() =>
             {
-                return false;
-            }
+                if (engine == null)
+                    return false;
+
+                Node oldNode = engine.GetNode(node.id);
+                if (oldNode == null)
+                {
+                    engine.LogEngineError($"Can`t remove node [{node.id}]. Does not exist.");
+                    return false;
+                }
+
+                engine.RemoveNode(oldNode);
+                return true;
+            });
         }
 
 
-        public NodesEngineInfo GetNodesEngineInfo()
+
+        [Authorize(UserClaims.EditorEditor)]
+        public async Task<bool> UpdateNode(LiteGraph.Node node)
         {
-            if (engine == null)
-                return null;
+            return await Task.Run(() =>
+            {
+                if (engine == null)
+                    return false;
 
-            NodesEngineInfo info = new NodesEngineInfo();
-            info.Started = engine.IsStarted();
-            info.LinksCount = engine.GetLinks().Count;
-            info.AllNodesCount = engine.GetNodes().Count;
-            info.PanelsNodesCount = engine.GetNodes().OfType<PanelNode>().Count();
-            info.HardwareNodesCount = engine.GetNodes().OfType<MySensorsNode>().Count();
-            info.InputsOutputsNodesCount = engine.GetNodes().Count(x => x is PanelInputNode || x is PanelOutputNode);
-            info.UiNodesCount = engine.GetNodes().OfType<UiNode>().Count();
-            info.OtherNodesCount = info.AllNodesCount
-                                   - info.PanelsNodesCount
-                                   - info.HardwareNodesCount
-                                   - info.InputsOutputsNodesCount
-                                   - info.UiNodesCount;
+                Node oldNode = engine.GetNode(node.id);
+                if (oldNode == null)
+                {
+                    engine.LogEngineError($"Can`t update node [{node.id}]. Does not exist.");
+                    return false;
+                }
 
-            return info;
+                oldNode.Position = new Position {X = node.pos[0], Y = node.pos[1]};
+                oldNode.Size = new Size {Width = node.size[0], Height = node.size[1]};
+
+                engine.UpdateNode(oldNode);
+                engine.UpdateNodeInDb(oldNode);
+
+                return true;
+            });
         }
 
 
-        public bool RemoveAllNodesAndLinks()
+        
+
+
+        [Authorize(UserClaims.EditorEditor)]
+        public bool SetNodeSettings(string id, Dictionary<string, string> data)
         {
-            if (engine == null)
-                return false;
-
-            engine.RemoveAllNodesAndLinks();
-            return true;
-        }
-
-
-        public bool ReceiverSettings(string id, int channel)
-        {
-            Node n = engine.GetNode(id);
-            if (n == null)
+            Node node = engine.GetNode(id);
+            if (node == null)
             {
                 engine.LogEngineError($"Can`t set settings for Node [{id}]. Does not exist.");
                 return false;
             }
 
-            ConnectionReceiverNode node = (ConnectionReceiverNode)n;
-            node.SetChannel(channel);
-            engine.UpdateNode(node);
-            engine.UpdateNodeInDb(node);
-
-            return true;
+            return node.SetSettings(data);
         }
 
-        public bool TransmitterSettings(string id, int channel)
+
+
+
+
+        [Authorize(UserClaims.EditorObserver)]
+        public async Task<string> SerializePanel(string id)
         {
-            Node n = engine.GetNode(id);
-            if (n == null)
+            return await Task.Run(() =>
             {
-                engine.LogEngineError($"Can`t set settings for Node [{id}]. Does not exist.");
-                return false;
-            }
+                if (engine == null)
+                    return null;
 
-            ConnectionTransmitterNode node = (ConnectionTransmitterNode)n;
-            node.SetChannel(channel);
-            engine.UpdateNode(node);
-            engine.UpdateNodeInDb(node);
+                PanelNode node = engine.GetPanelNode(id);
+                if (node == null)
+                    return null;
 
-            return true;
+                return NodesEngineSerializer.SerializePanel(id, engine);
+            });
         }
+
+
+
+        [Authorize(UserClaims.EditorObserver)]
+        public async Task<IActionResult> SerializePanelToFile(string id)
+        {
+            return await Task.Run(() =>
+            {
+                if (engine == null)
+                    return null;
+
+                PanelNode node = engine.GetPanelNode(id);
+                if (node == null)
+                    return null;
+
+                string json = NodesEngineSerializer.SerializePanel(id, engine);
+
+                return File(Encoding.UTF8.GetBytes(json), "text/plain", node.Settings["Name"].Value + ".json");
+            });
+        }
+
+
+
+
+
+
+
+
+
+
+        [Authorize(UserClaims.EditorEditor)]
+        public async Task<bool> ImportPanelJson(string json, int x, int y, string ownerPanelId)
+        {
+            return await Task.Run(() =>
+            {
+                if (engine == null)
+                    return false;
+
+                try
+                {
+                    List<Node> nodes;
+                    List<Link> links;
+                    NodesEngineSerializer.DeserializePanel(json, out nodes, out links);
+
+                    //set position to panel
+                    nodes[0].Position = new Position(x, y);
+                    nodes[0].PanelId = ownerPanelId;
+
+                    engine.GenerateNewIds(ref nodes, ref links);
+
+                    foreach (var node in nodes)
+                        engine.AddNode(node);
+
+                    foreach (var link in links)
+                        engine.AddLink(link.OutputId, link.InputId);
+
+                    return true;
+                }
+                catch
+                {
+                    return false;
+                }
+            });
+        }
+
+
+
+  
+        //todo authorize?
+
+        public async Task<NodesEngineInfo> GetNodesEngineInfo()
+        {
+            return await Task.Run(() =>
+            {
+                if (engine == null)
+                    return null;
+
+                NodesEngineInfo info = new NodesEngineInfo();
+                info.Started = engine.IsStarted();
+                info.LinksCount = engine.GetLinks().Count;
+                info.AllNodesCount = engine.GetNodes().Count;
+                info.PanelsNodesCount = engine.GetNodes().OfType<PanelNode>().Count();
+                info.HardwareNodesCount = engine.GetNodes().OfType<MySensorsNode>().Count();
+                info.InputsOutputsNodesCount = engine.GetNodes().Count(x => x is PanelInputNode || x is PanelOutputNode);
+                info.UiNodesCount = engine.GetNodes().OfType<UiNode>().Count();
+                info.OtherNodesCount = info.AllNodesCount
+                                       - info.PanelsNodesCount
+                                       - info.HardwareNodesCount
+                                       - info.InputsOutputsNodesCount
+                                       - info.UiNodesCount;
+
+                return info;
+            });
+        }
+
+
+
+
+        [Authorize(UserClaims.EditorEditor)]
+        public async Task<bool> RemoveAllNodesAndLinks()
+        {
+            return await Task.Run(() =>
+            {
+                if (engine == null)
+                    return false;
+
+                engine.RemoveAllNodesAndLinks();
+                return true;
+            });
+        }
+
+
+        [Authorize(UserClaims.EditorObserver)]
+        public string GetNodeDescription(string id)
+        {
+            Node node = engine.GetNode(id);
+
+            return node == null ? "" : node.GetNodeDescription();
+        }
+
 
 
         public async Task<int> ReceiverSetValue(string value, string channel, string password)
         {
-            if (engine == null)
-                return 2;
-
-            List<ConnectionRemoteReceiverNode> receivers = engine.GetNodes()
-                .OfType<ConnectionRemoteReceiverNode>()
-                .Where(x => x.GetChannel().ToString() == channel)
-                .ToList();
-
-            if (!receivers.Any())
+            return await Task.Run(() =>
             {
-                engine.LogNodesError(
-                    $"Received a value for Remote Receiver, but no receivers with channel [{channel}]");
-                return 2;
-            }
+                if (engine == null)
+                    return 2;
 
-            var ip = HttpContext.Connection.RemoteIpAddress;
-            string address = ip?.ToString();
+                List<ConnectionRemoteReceiverNode> receivers = engine.GetNodes()
+                    .OfType<ConnectionRemoteReceiverNode>()
+                    .Where(x => x.GetChannel().ToString() == channel)
+                    .ToList();
 
-            bool received = false;
+                if (!receivers.Any())
+                {
+                    engine.LogNodesError(
+                        $"Received a value for Remote Receiver, but no receivers with channel [{channel}]");
+                    return 2;
+                }
 
-            foreach (var receiver in receivers)
-            {
-                if (receiver.ReceiveValue(value, channel, password, address))
-                    received = true;
-            }
+                var ip = HttpContext.Connection.RemoteIpAddress;
+                string address = ip?.ToString();
 
-            return received ? 0 : 1;
+                bool received = false;
+
+                foreach (var receiver in receivers)
+                {
+                    if (receiver.ReceiveValue(value, channel, password, address))
+                        received = true;
+                }
+
+                return received ? 0 : 1;
+            });
         }
+
+
 
     }
 }

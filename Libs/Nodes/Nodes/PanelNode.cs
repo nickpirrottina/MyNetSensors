@@ -5,17 +5,19 @@
 
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 
 namespace MyNetSensors.Nodes
 {
+
     public class PanelNode : Node
     {
-        public string Name { get; set; }
-
         public PanelNode() : base(0, 0)
         {
             this.Title = "Panel";
             this.Type = "Main/Panel";
+
+            Settings.Add("Name", new NodeSetting(NodeSettingType.Text, "Name", ""));
         }
 
         public override void Loop()
@@ -39,7 +41,7 @@ namespace MyNetSensors.Nodes
                 Name = GenerateNewInputName()
             };
 
-            node.Name = input.Name;
+            node.Settings["Name"].Value = input.Name;
             AddInput(input);
 
             UpdateMe();
@@ -58,7 +60,7 @@ namespace MyNetSensors.Nodes
                 Name = GenerateOutputName()
             };
 
-            node.Name = output.Name;
+            node.Settings["Name"].Value = output.Name;
             AddOutput(output);
 
             UpdateMe();
@@ -102,8 +104,8 @@ namespace MyNetSensors.Nodes
         {
             this.engine = engine;
 
-            if (Name==null)
-            Name = GeneratePanelName();
+            if (string.IsNullOrEmpty(Settings["Name"].Value))
+                Settings["Name"].Value = GeneratePanelName();
 
             base.OnAddToEngine(engine);
             return true;
@@ -114,7 +116,7 @@ namespace MyNetSensors.Nodes
         {
             //auto naming
             List<PanelNode> panels = engine.GetPanelNodes();
-            List<string> names = panels.Select(x => x.Name).ToList();
+            List<string> names = panels.Select(x => x.Settings["Name"].Value).ToList();
             for (int i = 1; i <= names.Count + 1; i++)
             {
                 if (!names.Contains($"Panel {i}"))
@@ -155,6 +157,37 @@ namespace MyNetSensors.Nodes
                     return $"Out {i}";
             }
             return null;
+        }
+
+        public override string GetJsListGenerationScript()
+        {
+            return @"
+
+            //PanelNode
+            function PanelNode() {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.PanelNode',
+                    'Assembly': 'Nodes'
+                };
+                this.bgcolor = '#565656';
+            }
+            PanelNode.title = 'Panel';
+            PanelNode.prototype.getExtraMenuOptions = function (graphcanvas) {
+                var that = this;
+                return [
+                    { content: 'Open', callback: function () { window.location = '/NodesEditor/Panel/' + that.id; } },
+                    null, //null for horizontal line
+                    { content: 'Show on Dashboard', callback: function () { var win = window.open('/Dashboard/Panel/' + that.id, '_blank'); win.focus(); } },
+                    null,
+                    { content: 'Export to file', callback: function () { var win = window.open('/NodesEditorAPI/SerializePanelToFile/' + that.id, '_blank'); win.focus(); } },
+                    { content: 'Export to script', callback: function () { editor.exportPanelToScript(that.id) } },
+                    { content: 'Export URL', callback: function () { editor.exportPanelURL(that.id) } },
+                    null
+                ];
+            }
+            LiteGraph.registerNodeType('Main/Panel', PanelNode);
+
+            ";
         }
     }
 }

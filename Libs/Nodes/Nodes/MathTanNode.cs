@@ -13,12 +13,10 @@ namespace MyNetSensors.Nodes
 {
     public class MathTanNode : Node
     {
-        /// <summary>
-        /// Math Tan (1 inputs, 1 output).
-        /// </summary>
+
         public MathTanNode() : base(1, 1)
         {
-            this.Title = "Math Tan";
+            this.Title = "Tan";
             this.Type = "Math/Tan";
 
             Inputs[0].Type = DataType.Number;
@@ -33,15 +31,13 @@ namespace MyNetSensors.Nodes
         {
             if (Inputs.Any(i => i.Value == null))
             {
-                LogInfo("[NULL]");
-                Outputs[0].Value = null;
+                ResetOutputs();
                 return;
             }
 
             Double a = Double.Parse(Inputs[0].Value);
             Double b = Math.Tan(a);
 
-            LogInfo($"Tan [{a}] = [{b}]");
             Outputs[0].Value = b.ToString();
         }
     }

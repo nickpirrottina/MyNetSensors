@@ -14,9 +14,7 @@ namespace MyNetSensors.Nodes
 {
     public class MathClampNode : Node
     {
-        /// <summary>
-        /// MathClampNode (3 inputs, 1 output).
-        /// </summary>
+
         public MathClampNode() : base(3, 1)
         {
             this.Title = "Clamp";
@@ -40,8 +38,7 @@ namespace MyNetSensors.Nodes
         {
             if (Inputs.Any(i => i.Value == null))
             {
-                LogInfo("[NULL]");
-                Outputs[0].Value = null;
+                ResetOutputs();
                 return;
             }
 
@@ -58,7 +55,6 @@ namespace MyNetSensors.Nodes
 
             Double result = (value < min) ? min : (value > max) ? max : value;
 
-            LogInfo($"[{value}] clamped to [{result}]");
             Outputs[0].Value = result.ToString();
         }
     }

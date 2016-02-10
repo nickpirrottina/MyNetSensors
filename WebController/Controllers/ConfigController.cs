@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNet.Authorization;
 using Microsoft.AspNet.Mvc;
 using Microsoft.AspNet.Mvc.Rendering;
 using Microsoft.Extensions.Configuration;
+using MyNetSensors.Users;
 using MyNetSensors.WebController.Code;
 using MyNetSensors.WebController.ViewModels.Config;
 using Newtonsoft.Json;
@@ -13,15 +15,16 @@ using Newtonsoft.Json.Linq;
 
 namespace MyNetSensors.WebController.Controllers
 {
+    [Authorize(UserClaims.ConfigObserver)]
     public class ConfigController : Controller
     {
 
         private const string SETTINGS_FILE_NAME = "appsettings.json";
-        private IConfigurationRoot сonfiguration;
+        private IConfigurationRoot configuration;
 
-        public ConfigController(IConfigurationRoot сonfiguration)
+        public ConfigController(IConfigurationRoot configuration)
         {
-            this.сonfiguration = сonfiguration;
+            this.configuration = configuration;
         }
 
         private dynamic ReadConfig()
@@ -36,120 +39,154 @@ namespace MyNetSensors.WebController.Controllers
 
         public IActionResult Index()
         {
-            bool firstRun = Boolean.Parse(сonfiguration["FirstRun"]);
-
-            if (firstRun)
-                return RedirectToAction("FirstRun");
-
             return View();
         }
 
 
 
-
-
         [HttpGet]
-        public IActionResult FirstRun()
+        public IActionResult SerialGateway()
         {
-            List<string> ports = SystemController.comPort.GetPortsList();
-            string currentPort = SystemController.serialPortName;
+            ViewBag.ports = SerialConnectionPort.GetAvailablePorts();
 
-            ViewBag.ports = ports;
-
-            if (ports.Contains(currentPort))
-                ViewBag.currentPort = currentPort;
-
-            return View(new SerialPortViewModel());
+            return View(new SerialGatewayViewModel
+            {
+                PortName = SystemController.gatewayConfig.SerialGatewayConfig.SerialPortName,
+                Boudrate = SystemController.gatewayConfig.SerialGatewayConfig.Boudrate
+            });
         }
 
+
+        [Authorize(UserClaims.ConfigEditor)]
 
         [HttpPost]
-        public IActionResult FirstRun(SerialPortViewModel port)
+        public IActionResult SerialGateway(SerialGatewayViewModel model)
         {
-            if (String.IsNullOrEmpty(port.PortName))
-                return RedirectToAction("FirstRun");
+            if (String.IsNullOrEmpty(model.PortName))
+                return RedirectToAction("SerialGateway");
 
             dynamic json = ReadConfig();
-            json.SerialGateway.SerialPort = port.PortName;
-            json.FirstRun = false;
+            json.Gateway.SerialGateway.SerialPortName = model.PortName;
+            json.Gateway.SerialGateway.Boudrate = model.Boudrate;
             WriteConfig(json);
-            сonfiguration.Reload();
+            configuration.Reload();
 
-            //SystemController.Start(сonfiguration);
-
-            return RedirectToAction("Index", "Dashboard");
-        }
-
-
-
-        [HttpGet]
-        public IActionResult SerialPort()
-        {
-            List<string> ports = SystemController.comPort.GetPortsList();
-            string currentPort = SystemController.serialPortName;
-
-            ViewBag.ports = ports;
-
-            if (ports.Contains(currentPort))
-                ViewBag.currentPort = currentPort;
-
-            return View(new SerialPortViewModel());
-        }
-
-
-        [HttpPost]
-        public IActionResult SerialPort(SerialPortViewModel port)
-        {
-            if (String.IsNullOrEmpty(port.PortName))
-                return RedirectToAction("SerialPort");
-
-            dynamic json = ReadConfig();
-            json.SerialGateway.SerialPort = port.PortName;
-            WriteConfig(json);
-            сonfiguration.Reload();
-
-            SystemController.gateway.Disconnect();
-            SystemController.serialPortName = port.PortName;
+            SystemController.DisconnectGateway();
+            SystemController.gatewayConfig.SerialGatewayConfig.SerialPortName = model.PortName;
+            SystemController.gatewayConfig.SerialGatewayConfig.Boudrate = model.Boudrate;
 
             return RedirectToAction("Index");
         }
 
 
+        [HttpGet]
+        public IActionResult EthernetGateway()
+        {
+            EthernetGatewayViewModel model = new EthernetGatewayViewModel
+            {
+                Ip = SystemController.gatewayConfig.EthernetGatewayConfig.GatewayIP,
+                Port = SystemController.gatewayConfig.EthernetGatewayConfig.GatewayPort
+            };
+
+            return View(model);
+        }
 
 
-        public async Task<bool> ConnectSerialController()
+        [Authorize(UserClaims.ConfigEditor)]
+
+        [HttpPost]
+        public IActionResult EthernetGateway(EthernetGatewayViewModel model)
         {
             dynamic json = ReadConfig();
-            json.SerialGateway.Enable = true;
+            json.Gateway.EthernetGateway.GatewayIP = model.Ip;
+            json.Gateway.EthernetGateway.GatewayPort = model.Port;
             WriteConfig(json);
-            сonfiguration.Reload();
+            configuration.Reload();
 
-            string portname = SystemController.serialPortName;
-            await SystemController.gateway.Connect(portname);
+            SystemController.DisconnectGateway();
+            SystemController.gatewayConfig.EthernetGatewayConfig.GatewayIP = model.Ip;
+            SystemController.gatewayConfig.EthernetGatewayConfig.GatewayPort = model.Port;
+
+            return RedirectToAction("Index");
+        }
+
+
+        [Authorize(UserClaims.ConfigEditor)]
+
+        public async Task<bool> ConnectSerialGateway()
+        {
+            SystemController.DisconnectGateway();
+
+            dynamic json = ReadConfig();
+            json.Gateway.SerialGateway.Enable = true;
+            json.Gateway.EthernetGateway.Enable = false;
+            WriteConfig(json);
+            configuration.Reload();
+
+            SystemController.gatewayConfig.SerialGatewayConfig.Enable = true;
+            SystemController.gatewayConfig.EthernetGatewayConfig.Enable = false;
+
+            await Task.Run((() =>
+            {
+                SystemController.ConnectToGateway();
+            }));
 
             return true;
         }
 
 
-        public bool DisconnectSerialController()
-        {
-            dynamic json = ReadConfig();
-            json.SerialGateway.Enable = false;
-            WriteConfig(json);
-            сonfiguration.Reload();
 
-            SystemController.gateway.Disconnect();
+        [Authorize(UserClaims.ConfigEditor)]
+
+        public async Task<bool> ConnectEthernetGateway()
+        {
+            SystemController.DisconnectGateway();
+
+            dynamic json = ReadConfig();
+            json.Gateway.SerialGateway.Enable = false;
+            json.Gateway.EthernetGateway.Enable = true;
+            WriteConfig(json);
+            configuration.Reload();
+
+            SystemController.gatewayConfig.SerialGatewayConfig.Enable = false;
+            SystemController.gatewayConfig.EthernetGatewayConfig.Enable = true;
+
+            await Task.Run((() =>
+            {
+                SystemController.ConnectToGateway();
+            }));
 
             return true;
         }
 
+
+        [Authorize(UserClaims.ConfigEditor)]
+
+        public bool DisconnectGateway()
+        {
+            dynamic json = ReadConfig();
+            json.Gateway.SerialGateway.Enable = false;
+            json.Gateway.EthernetGateway.Enable = false;
+            WriteConfig(json);
+            configuration.Reload();
+
+            SystemController.gatewayConfig.SerialGatewayConfig.Enable = false;
+            SystemController.gatewayConfig.EthernetGatewayConfig.Enable = false;
+
+            SystemController.DisconnectGateway();
+
+            return true;
+        }
+
+
+        [Authorize(UserClaims.ConfigEditor)]
 
         public bool StartNodesEngine()
         {
             dynamic json = ReadConfig();
             json.NodesEngine.Enable = true;
             WriteConfig(json);
-            сonfiguration.Reload();
+            configuration.Reload();
 
             SystemController.nodesEngine.Start();
 
@@ -157,17 +194,62 @@ namespace MyNetSensors.WebController.Controllers
         }
 
 
+
+        [Authorize(UserClaims.ConfigEditor)]
+
         public bool StopNodesEngine()
         {
             dynamic json = ReadConfig();
             json.NodesEngine.Enable = false;
             WriteConfig(json);
-            сonfiguration.Reload();
+            configuration.Reload();
 
             SystemController.nodesEngine.Stop();
 
             return true;
         }
+
+
+        public WebServerInfo GetWebServerInfo()
+        {
+            if (SystemController.usersDb == null)
+                return null;
+
+            WebServerInfo info = new WebServerInfo();
+            info.RegisteredUsersCount = SystemController.usersDb.GetUsersCount();
+
+            return info;
+        }
+
+
+
+        [HttpGet]
+        public IActionResult Rules()
+        {
+            return View(SystemController.webServerRules);
+        }
+
+
+
+        [Authorize(UserClaims.ConfigEditor)]
+
+        [HttpPost]
+        public IActionResult Rules(WebServerRules model)
+        {
+            if (model != null)
+            {
+                SystemController.webServerRules = model;
+
+                dynamic json = ReadConfig();
+                json.WebServer.Rules = JObject.FromObject(model);
+                WriteConfig(json);
+                configuration.Reload();
+            }
+
+            return RedirectToAction("Index");
+        }
+
+
     }
 
 }

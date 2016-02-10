@@ -57,17 +57,28 @@ function createNode(node) {
         case "UI/Timer":
             createTimer(node);
             break;
-    default:
+        case "UI/Voice Yandex":
+            createVoiceYandex(node);
+            break;
+        case "UI/Voice Google":
+            createVoiceGoogle(node);
+            break;
+        case "UI/Audio":
+            createAudio(node);
+            break;
+        default:
     }
+
     updateNode(node);
 }
 
 
 
 
+
 function updateNode(node) {
     //if ShowOnMainPage option changed to true
-    if ($('#node-' + node.Id).length==0)
+    if ($('#node-' + node.Id).length == 0)
         createNode(node);
 
     $('#activity-' + node.PanelId).show().fadeOut(150);
@@ -112,8 +123,24 @@ function updateNode(node) {
         case "UI/Timer":
             updateTimer(node);
             break;
+        case "UI/Voice Yandex":
+            updateVoiceYandex(node);
+            break;
+        case "UI/Voice Google":
+            updateVoiceGoogle(node);
+            break;
+        case "UI/Audio":
+            updateAudio(node);
+            break;
         default:
     }
+
+    var oldPanelIndex = $('#node-' + node.Id).attr("panelIndex");
+    if (oldPanelIndex != node.Settings["PanelIndex"].Value) {
+        $('#node-' + node.Id).attr("panelIndex", node.Settings["PanelIndex"].Value);
+        sortPanel(node.PanelId);
+    }
+
 }
 
 
@@ -122,10 +149,10 @@ function removeNode(node) {
     $('#node-' + node.Id).fadeOut(elementsFadeTime, function () {
 
         switch (node.Type) {
-        case "UI/Chart":
-            removeChart(node);
-            break;
-        default:
+            case "UI/Chart":
+                removeChart(node);
+                break;
+            default:
         }
 
 
@@ -155,3 +182,32 @@ function removePanel(panelId) {
         $(this).remove();
     });
 }
+
+
+function sortPanel(panelId) {
+
+    var elements = $('#uiContainer-' + panelId).children();
+    var count = 0;
+
+    // sort based on timestamp attribute
+    elements.sort(function (a, b) {
+
+        // convert to integers from strings
+        a = parseInt($(a).attr("panelIndex"), 10);
+        b = parseInt($(b).attr("panelIndex"), 10);
+        count += 2;
+        // compare
+        if (a > b) {
+            return 1;
+        } else if (a < b) {
+            return -1;
+        } else {
+            return 0;
+        }
+    });
+
+    var panel = document.getElementById('uiContainer-' + panelId);
+    for (i = 0; i < elements.length; ++i) {
+        panel.appendChild(elements[i]);
+    }
+};

@@ -11,12 +11,10 @@ namespace MyNetSensors.Nodes
 
     public class MathRoundNode : Node
     {
-        /// <summary>
-        /// Math Round (1 inputs, 1 output).
-        /// </summary>
+
         public MathRoundNode() : base(1, 1)
         {
-            this.Title = "Math Round";
+            this.Title = "Round";
             this.Type = "Math/Round";
 
             Inputs[0].Type = DataType.Number;
@@ -31,15 +29,13 @@ namespace MyNetSensors.Nodes
         {
             if (Inputs.Any(i => i.Value == null))
             {
-                LogInfo("[NULL]");
-                Outputs[0].Value = null;
+                ResetOutputs();
                 return;
             }
 
             Double a = Double.Parse(Inputs[0].Value);
             int b = (int)Math.Round(a);
 
-            LogInfo($"[{a}] rounded to [{b}]");
             Outputs[0].Value = b.ToString();
         }
     }

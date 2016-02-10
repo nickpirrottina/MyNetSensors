@@ -11,7 +11,6 @@
     "EntityFramework.SQLite": "7.0.0-rc1-final",
     "Microsoft.AspNet.Authentication.Cookies": "1.0.0-rc1-final",
     "Microsoft.AspNet.Diagnostics.Entity": "7.0.0-rc1-final",
-    "Microsoft.AspNet.Identity.EntityFramework": "3.0.0-rc1-final",
     "Microsoft.AspNet.IISPlatformHandler": "1.0.0-rc1-final",
     "Microsoft.AspNet.Mvc": "6.0.0-rc1-final",
     "Microsoft.AspNet.Mvc.TagHelpers": "6.0.0-rc1-final",
@@ -26,7 +25,8 @@
     "Microsoft.Extensions.Logging.Console": "1.0.0-rc1-final",
     "Microsoft.Extensions.Logging.Debug": "1.0.0-rc1-final",
     "Microsoft.VisualStudio.Web.BrowserLink.Loader": "14.0.0-rc1-final",
-    "Microsoft.AspNet.SignalR.Server": "3.0.0-rc1-final"
+    "Microsoft.AspNet.SignalR.Server": "3.0.0-rc1-final",
+    "Microsoft.AspNet.WebSockets.Server": "1.0.0-rc1-final"
   },
 
   "commands": {
@@ -38,13 +38,14 @@
   "frameworks": {
     "dnx451": {
       "dependencies": {
-        "Gateways.MySensors.Serial": "1.0.0-*",
+        "Gateways.MySensors": "1.0.0-*",
         "Nodes": "1.0.0-*",
         "Nodes.MySensors": "1.0.0-*",
         "Nodes.UI": "1.0.0-*",
         "Nodes.UITimer": "1.0.0-*",
         "Repositories.Dapper": "1.0.0-*",
-        "Repositories.EF.SQLite": "1.0.0-*"
+        "Repositories.EF.SQLite": "1.0.0-*",
+        "Users": "1.0.0-*"
       }
     }
   },

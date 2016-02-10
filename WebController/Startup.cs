@@ -2,11 +2,13 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Net;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNet.Builder;
 using Microsoft.AspNet.Hosting;
 using Microsoft.AspNet.Http;
-using Microsoft.AspNet.Identity.EntityFramework;
+using Microsoft.AspNet.Routing;
 using Microsoft.AspNet.SignalR.Infrastructure;
 using Microsoft.Data.Entity;
 using Microsoft.Data.Entity.Query.ExpressionTranslators.Internal;
@@ -14,9 +16,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using MyNetSensors.Repositories.EF.SQLite;
+using MyNetSensors.Users;
 using MyNetSensors.WebController.Code;
-using MyNetSensors.WebController.Models;
-using MyNetSensors.WebController.Services;
 
 namespace MyNetSensors.WebController
 {
@@ -26,15 +27,12 @@ namespace MyNetSensors.WebController
 
         public Startup(IHostingEnvironment env)
         {
-            // Set up configuration sources.
-
             var builder = new ConfigurationBuilder()
                 .AddJsonFile("appsettings.json")
                 .AddJsonFile($"appsettings.{env.EnvironmentName}.json", optional: true);
 
             if (env.IsDevelopment())
             {
-                // For more details on using the user secret store see http://go.microsoft.com/fwlink/?LinkID=532709
                 builder.AddUserSecrets();
             }
 
@@ -42,71 +40,52 @@ namespace MyNetSensors.WebController
             Configuration = builder.Build();
         }
 
-        private IServiceCollection services;
-
-        // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            //database
-            bool dataBaseEnabled = Boolean.Parse(Configuration["DataBase:Enable"]);
-            bool useInternalDb = Boolean.Parse(Configuration["DataBase:UseInternalDb"]);
-
-            if (dataBaseEnabled)
-            {
-                if (useInternalDb)
-                {
-                    services.AddEntityFramework()
-                        .AddSqlite()
-                        .AddDbContext<ApplicationDbContext>(options =>
-                            options.UseSqlite("Data Source=Application.sqlite"))
-                        .AddDbContext<NodesDbContext>(options =>
-                            options.UseSqlite("Data Source=Nodes.sqlite"))
-                        .AddDbContext<NodesStatesHistoryDbContext>(options =>
-                            options.UseSqlite("Data Source=NodesStatesHistory.sqlite"))
-                        .AddDbContext<MySensorsNodesDbContext>(options =>
-                            options.UseSqlite("Data Source=MySensorsNodes.sqlite"))
-                        .AddDbContext<MySensorsMessagesDbContext>(options =>
-                            options.UseSqlite("Data Source=MySensorsMessages.sqlite"))
-                        .AddDbContext<UITimerNodesDbContext>(options =>
-                            options.UseSqlite("Data Source=UITimerNodes.sqlite"));
-                }
-                else
-                {
-                    string connectionString = Configuration["DataBase:ExternalDbConnectionString"];
-                    services.AddEntityFramework()
-                        .AddSqlServer()
-                        .AddDbContext<ApplicationDbContext>(options =>
-                            options.UseSqlServer(connectionString))
-                        .AddDbContext<NodesDbContext>(options =>
-                            options.UseSqlServer(connectionString))
-                        .AddDbContext<NodesStatesHistoryDbContext>(options =>
-                            options.UseSqlServer(connectionString))
-                        .AddDbContext<MySensorsNodesDbContext>(options =>
-                            options.UseSqlServer(connectionString))
-                        .AddDbContext<MySensorsMessagesDbContext>(options =>
-                            options.UseSqlServer(connectionString))
-                        .AddDbContext<UITimerNodesDbContext>(options =>
-                            options.UseSqlServer(connectionString));
-                }
-            }
-
-            services.AddIdentity<ApplicationUser, IdentityRole>()
-                .AddEntityFrameworkStores<ApplicationDbContext>()
-                .AddDefaultTokenProviders();
+            //if (Boolean.Parse(Configuration["DataBase:Enable"])
+            //    && Boolean.Parse(Configuration["DataBase:UseInternalDb"]))
+            //{
+                services.AddEntityFramework()
+                    .AddSqlite()
+                    .AddDbContext<NodesDbContext>(options =>
+                        options.UseSqlite("Data Source=Nodes.sqlite"))
+                    .AddDbContext<NodesStatesHistoryDbContext>(options =>
+                        options.UseSqlite("Data Source=NodesStatesHistory.sqlite"))
+                    .AddDbContext<MySensorsNodesDbContext>(options =>
+                        options.UseSqlite("Data Source=MySensorsNodes.sqlite"))
+                    .AddDbContext<MySensorsMessagesDbContext>(options =>
+                        options.UseSqlite("Data Source=MySensorsMessages.sqlite"))
+                    .AddDbContext<UITimerNodesDbContext>(options =>
+                        options.UseSqlite("Data Source=UITimerNodes.sqlite"))
+                    .AddDbContext<UsersDbContext>(options =>
+                        options.UseSqlite("Data Source=Users.sqlite"));
+            //}
 
             services.AddMvc();
 
-            // Add application services.
-            services.AddTransient<IEmailSender, AuthMessageSender>();
-            services.AddTransient<ISmsSender, AuthMessageSender>();
-
-            //Add all SignalR related services to IoC.
             services.AddSignalR();
 
             services.AddSingleton(x => Configuration);
+
+            services.AddAuthorization(options =>
+            {
+                options.AddPolicy(UserClaims.DashboardObserver, policy => { policy.RequireClaim(UserClaims.DashboardObserver); });
+                options.AddPolicy(UserClaims.DashboardEditor, policy => { policy.RequireClaim(UserClaims.DashboardEditor); });
+                options.AddPolicy(UserClaims.EditorObserver, policy => { policy.RequireClaim(UserClaims.EditorObserver); });
+                options.AddPolicy(UserClaims.EditorEditor, policy => { policy.RequireClaim(UserClaims.EditorEditor); });
+                options.AddPolicy(UserClaims.HardwareObserver, policy => { policy.RequireClaim(UserClaims.HardwareObserver); });
+                options.AddPolicy(UserClaims.LogsObserver, policy => { policy.RequireClaim(UserClaims.LogsObserver); });
+                options.AddPolicy(UserClaims.LogsEditor, policy => { policy.RequireClaim(UserClaims.LogsEditor); });
+                options.AddPolicy(UserClaims.ConfigObserver, policy => { policy.RequireClaim(UserClaims.ConfigObserver); });
+                options.AddPolicy(UserClaims.ConfigEditor, policy => { policy.RequireClaim(UserClaims.ConfigEditor); });
+                options.AddPolicy(UserClaims.UsersObserver, policy => { policy.RequireClaim(UserClaims.UsersObserver); });
+                options.AddPolicy(UserClaims.UsersEditor, policy => { policy.RequireClaim(UserClaims.UsersEditor); });
+            });
+
+
         }
 
-        // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
+
         public void Configure(
             IApplicationBuilder app,
             IHostingEnvironment env,
@@ -160,35 +139,41 @@ namespace MyNetSensors.WebController
                 else
                 {
                     app.UseExceptionHandler("/Home/Error");
-
-                    // For more details on creating database during deployment see http://go.microsoft.com/fwlink/?LinkID=615859
-                    try
-                    {
-                        using (var serviceScope = app.ApplicationServices.GetRequiredService<IServiceScopeFactory>()
-                            .CreateScope())
-                        {
-                            serviceScope.ServiceProvider.GetService<ApplicationDbContext>()
-                                .Database.Migrate();
-                        }
-                    }
-                    catch
-                    {
-                    }
                 }
 
                 app.UseRuntimeInfoPage("/info");
 
+                app.UseWebSockets();
                 app.UseSignalR();
 
                 app.UseIISPlatformHandler(options => options.AuthenticationDescriptions.Clear());
 
                 app.UseStaticFiles();
 
-                app.UseIdentity();
-
-                // To configure external authentication please see http://go.microsoft.com/fwlink/?LinkID=532715
-
                 app.UseStatusCodePages();
+
+                //redirect to /FirstRun
+                app.Use(async (context, next) =>
+                {
+                    if (Boolean.Parse(Configuration["FirstRun"])
+                    && !context.Request.Path.ToUriComponent().StartsWith("/FirstRun"))
+                    {
+                        context.Response.Redirect("/FirstRun");
+                        return;
+                    }
+                    //invoke next component
+                    await next.Invoke();
+                });
+
+                app.UseCookieAuthentication(options =>
+                {
+                    options.AuthenticationScheme = "Cookies";
+                    options.LoginPath = new Microsoft.AspNet.Http.PathString("/User/Login");
+                    options.AccessDeniedPath = "/User/AccessDenied";
+                    options.AutomaticAuthenticate = true;
+                    options.AutomaticChallenge = true;
+                });
+
 
                 app.UseMvc(routes =>
                 {
@@ -205,7 +190,7 @@ namespace MyNetSensors.WebController
             SystemController.Start(Configuration, serviceProvider);
         }
 
-        // Entry point for the application.
+
         public static void Main(string[] args)
         {
             WebApplication.Run<Startup>(args);

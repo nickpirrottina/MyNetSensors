@@ -13,12 +13,10 @@ namespace MyNetSensors.Nodes
 {
     public class MathSinNode : Node
     {
-        /// <summary>
-        /// Math Sin (1 inputs, 1 output).
-        /// </summary>
+
         public MathSinNode() : base(1, 1)
         {
-            this.Title = "Math Sin";
+            this.Title = "Sin";
             this.Type = "Math/Sin";
 
             Inputs[0].Type = DataType.Number;
@@ -33,15 +31,13 @@ namespace MyNetSensors.Nodes
         {
             if (Inputs.Any(i => i.Value == null))
             {
-                LogInfo("[NULL]");
-                Outputs[0].Value = null;
+                ResetOutputs();
                 return;
             }
 
             Double a = Double.Parse(Inputs[0].Value);
             Double b = Math.Sin(a);
 
-            LogInfo($"Sin [{a}] = [{b}]");
             Outputs[0].Value = b.ToString();
         }
     }

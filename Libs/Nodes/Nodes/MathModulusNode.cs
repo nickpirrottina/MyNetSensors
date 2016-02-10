@@ -13,12 +13,10 @@ namespace MyNetSensors.Nodes
 {
     public class MathModulusNode : Node
     {
-        /// <summary>
-        /// Math Modulus (2 inputs, 1 output).
-        /// </summary>
+
         public MathModulusNode() : base(2, 1)
         {
-            this.Title = "Math Modulus";
+            this.Title = "Modulus";
             this.Type = "Math/Modulus";
 
             Inputs[0].Type = DataType.Number;
@@ -34,8 +32,7 @@ namespace MyNetSensors.Nodes
         {
             if (Inputs.Any(i => i.Value == null))
             {
-                LogInfo("[NULL]");
-                Outputs[0].Value = null;
+                ResetOutputs();
                 return;
             }
 
@@ -43,7 +40,6 @@ namespace MyNetSensors.Nodes
             Double b = Double.Parse(Inputs[1].Value);
             Double c = a % b;
 
-            LogInfo($"[{a}] modulus [{b}] = [{c}]");
             Outputs[0].Value = c.ToString();
         }
     }

@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using MyNetSensors.Gateways;
-using MyNetSensors.Gateways.MySensors.Serial;
+using MyNetSensors.Gateways.MySensors;
 using Node = MyNetSensors.Nodes.Node;
 
 namespace MyNetSensors.Nodes
@@ -12,7 +12,7 @@ namespace MyNetSensors.Nodes
         public int nodeId;
 
 
-        public MySensorsNode(Gateways.MySensors.Serial.Node node) : base(0, 0)
+        public MySensorsNode(Gateways.MySensors.Node node) : base(0, 0)
         {
             this.nodeId = node.Id;
             this.Title = node.GetSimpleName2();
@@ -39,31 +39,36 @@ namespace MyNetSensors.Nodes
 
             MySensorsNodeInput mySensorsNodeInput = (MySensorsNodeInput)input;
 
-            LogInfo($"Hardware Node{nodeId} Sensor{mySensorsNodeInput.sensorId} input: {input.Value}");
+            //LogInfo($"Hardware Node{nodeId} Sensor{mySensorsNodeInput.sensorId} input: {input.Value}");
 
-            MySensorsNodesEngine.gateway.SendSensorState(mySensorsNodeInput.nodeId, mySensorsNodeInput.sensorId, input.Value);
-
-        }
-
-        public override void OnOutputChange(Output output)
-        {
-            if (output is MySensorsNodeOutput)
-            {
-                MySensorsNodeOutput mySensorsNodeOutput = (MySensorsNodeOutput) output;
-                LogInfo(
-                    $"Hardware Node{nodeId} Sensor{mySensorsNodeOutput.sensorId} output: {output.Value}");
-            }
+            if (MySensorsNodesEngine.gateway != null)
+                MySensorsNodesEngine.gateway.SendSensorState(mySensorsNodeInput.nodeId, mySensorsNodeInput.sensorId,
+                    input.Value);
             else
             {
-                LogInfo($"Hardware Node{nodeId} {output.Name} : {output.Value}");
-
-            };
-
-
-            base.OnOutputChange(output);
+               // LogError($"Can`t send message to Node[{mySensorsNodeInput.nodeId}] Sensor[{mySensorsNodeInput.sensorId}]. Gateway is not connected.");
+            }
         }
 
-        private void CreateInputsOutputs(Gateways.MySensors.Serial.Node node)
+        //public override void OnOutputChange(Output output)
+        //{
+        //    if (output is MySensorsNodeOutput)
+        //    {
+        //        MySensorsNodeOutput mySensorsNodeOutput = (MySensorsNodeOutput) output;
+        //        LogInfo(
+        //            $"Hardware Node{nodeId} Sensor{mySensorsNodeOutput.sensorId} output: {output.Value}");
+        //    }
+        //    else
+        //    {
+        //        LogInfo($"Hardware Node{nodeId} {output.Name} : {output.Value}");
+
+        //    };
+
+
+        //    base.OnOutputChange(output);
+        //}
+
+        private void CreateInputsOutputs(Gateways.MySensors.Node node)
         {
             foreach (var sensor in node.sensors)
             {
@@ -103,6 +108,24 @@ namespace MyNetSensors.Nodes
             output.Value = batteryLevel.ToString();
             UpdateMe();
             UpdateMeInDb();
+        }
+
+        public override string GetJsListGenerationScript()
+        {
+            return @"
+
+            function MySensorsNode() {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.MySensorsNode',
+                    'Assembly': 'Nodes.MySensors'
+                };
+                this.clonable = false;
+            }
+            MySensorsNode.title = 'MySensors Node';
+            MySensorsNode.skip_list = true;
+            LiteGraph.registerNodeType('Nodes/Hardware', MySensorsNode);
+
+            ";
         }
     }
 }

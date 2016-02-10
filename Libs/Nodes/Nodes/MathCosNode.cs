@@ -13,12 +13,10 @@ namespace MyNetSensors.Nodes
 {
     public class MathCosNode : Node
     {
-        /// <summary>
-        /// Math Cos (1 inputs, 1 output).
-        /// </summary>
+
         public MathCosNode() : base(1, 1)
         {
-            this.Title = "Math Cos";
+            this.Title = "Cos";
             this.Type = "Math/Cos";
 
             Inputs[0].Type = DataType.Number;
@@ -33,15 +31,13 @@ namespace MyNetSensors.Nodes
         {
             if (Inputs.Any(i => i.Value == null))
             {
-                LogInfo("[NULL]");
-                Outputs[0].Value = null;
+                ResetOutputs();
                 return;
             }
 
             Double a = Double.Parse(Inputs[0].Value);
             Double b = Math.Cos(a);
 
-            LogInfo($"Cos [{a}] = [{b}]");
             Outputs[0].Value = b.ToString();
         }
     }

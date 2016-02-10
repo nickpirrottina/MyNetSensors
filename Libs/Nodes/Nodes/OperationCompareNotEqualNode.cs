@@ -11,9 +11,7 @@ namespace MyNetSensors.Nodes
 
     public class OperationCompareNotEqualNode : Node
     {
-        /// <summary>
-        /// Compare NotEqual (2 inputs, 1 output).
-        /// </summary>
+
         public OperationCompareNotEqualNode() : base(2, 1)
         {
             this.Title = "Compare NotEqual";
@@ -32,8 +30,7 @@ namespace MyNetSensors.Nodes
         {
             if (Inputs.Any(i => i.Value == null))
             {
-                LogInfo("[NULL]");
-                Outputs[0].Value = null;
+                ResetOutputs();
                 return;
             }
 
@@ -42,29 +39,11 @@ namespace MyNetSensors.Nodes
                 Double a = Double.Parse(Inputs[0].Value);
                 Double b = Double.Parse(Inputs[1].Value);
 
-                if (a != b)
-                {
-                    LogInfo($"[{a}] != [{b}]");
-                    Outputs[0].Value = "1";
-                }
-                else
-                {
-                    LogInfo($"[{a}] = [{b}]");
-                    Outputs[0].Value = "0";
-                }
+                Outputs[0].Value = a != b ? "1" : "0";
             }
             catch
             {
-                if (Inputs[0].Value != Inputs[1].Value)
-                {
-                    LogInfo($"[{Inputs[0].Value}] != [{Inputs[1].Value}]");
-                    Outputs[0].Value = "1";
-                }
-                else
-                {
-                    LogInfo($"[{Inputs[0].Value}] = [{Inputs[1].Value}]");
-                    Outputs[0].Value = "0";
-                }
+                Outputs[0].Value = Inputs[0].Value != Inputs[1].Value ? "1" : "0";
             }
         }
     }

@@ -2,12 +2,16 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNet.Authorization;
 using Microsoft.AspNet.Mvc;
+using Microsoft.Extensions.Configuration;
 using MyNetSensors.Nodes;
+using MyNetSensors.Users;
 using MyNetSensors.WebController.Code;
 
 namespace MyNetSensors.WebController.Controllers
 {
+    [Authorize(UserClaims.DashboardObserver)]
     public class DashboardController : Controller
     {
         const string MAIN_PANEL_ID = "Main";
@@ -37,7 +41,7 @@ namespace MyNetSensors.WebController.Controllers
                 PanelNode panel = engine.GetPanel(id);
                 if (panel == null)
                     return HttpNotFound();
-                ViewBag.panelName = panel.Name;
+                ViewBag.panelName = panel.Settings["Name"].Value;
             }
 
             ViewBag.panelId = id;

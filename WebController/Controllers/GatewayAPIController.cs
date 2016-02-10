@@ -7,23 +7,26 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNet.Authorization;
 using Microsoft.AspNet.Mvc;
 using MyNetSensors.Gateways;
-using MyNetSensors.Gateways.MySensors.Serial;
+using MyNetSensors.Gateways.MySensors;
+using MyNetSensors.Users;
 using MyNetSensors.WebController.Code;
 
 namespace MyNetSensors.WebController.Controllers
 {
-    [ResponseCache(Duration = 0)]
 
     public class GatewayAPIController : Controller
     {
         private Gateway gateway = SystemController.gateway;
 
 
+        [Authorize(UserClaims.HardwareObserver)]
+
         public List<Node> GetNodes()
         {
-            return gateway.GetNodes();
+            return gateway?.GetNodes();
         }
 
         public bool IsConnected()
@@ -52,72 +55,71 @@ namespace MyNetSensors.WebController.Controllers
         //    return true;
         //}
 
+
+        [Authorize(UserClaims.DashboardEditor)]
+
         public bool SendMessage(int nodeId, int sensorId, string state)
         {
-            if (!gateway.IsConnected())
+            if (gateway==null || !gateway.IsConnected())
                 return false;
 
             gateway.SendSensorState(nodeId, sensorId, state);
             return true;
         }
 
-        
+
         public GatewayInfo GetGatewayInfo()
         {
-            if (gateway == null)
-                return null;
+            GatewayInfo info = new GatewayInfo
+            {
+                isGatewayConnected = IsConnected(),
+                gatewayNodesRegistered = 0,
+                gatewaySensorsRegistered = 0,
+                state = GatewayState.Disconnected
+            };
 
-            return gateway.GetGatewayInfo();
+            if (gateway != null)
+            {
+                info.state = gateway.GetGatewayState();
+                info.gatewayNodesRegistered = gateway.GetNodes().Count;
+                info.gatewaySensorsRegistered = gateway.GetNodes().Sum(node => node.sensors.Count);
+
+                if (gateway.connectionPort is EthernetConnectionPort)
+                    info.type = GatewayType.Ethernet;
+                else if (gateway.connectionPort is SerialConnectionPort)
+                    info.type = GatewayType.Serial;
+            }
+
+            return info;
         }
-        
+
+
+        [Authorize(UserClaims.EditorEditor)]
 
         public bool UpdateNodeSettings(Node node)
         {
-           // gateway.UpdateNode(node);
+            //todo
+            // gateway.UpdateNode(node);
             return true;
         }
-        
+
+
+        [Authorize(UserClaims.EditorEditor)]
 
         public bool RemoveNode(int nodeId)
         {
-            if (gateway.GetNode(nodeId) == null)
+            if (gateway?.GetNode(nodeId) == null)
                 return false;
             gateway.RemoveNode(nodeId);
             return true;
         }
 
 
+        [Authorize(UserClaims.EditorEditor)]
+
         public async Task<bool> RemoveAllNodes()
         {
             gateway.RemoveAllNodes();
-            return true;
-        }
-        
-
-        public bool DisableTasks()
-        {
-            SystemController.uiTimerNodesEngine.DisableAllTasks();
-            return true;
-        }
-
-
-        public bool RemoveAllTasks()
-        {
-            SystemController.uiTimerNodesEngine.RemoveAllTasks();
-            return true;
-        }
-        
-
-        public async Task<bool> Connect()
-        {
-            string portname = SystemController.gateway.serialPort.GetPortName();
-            await SystemController.gateway.Connect(portname);
-            return true;
-        }
-
-        public bool Disconnect()
-        {
-            SystemController.gateway.Disconnect();
             return true;
         }
 

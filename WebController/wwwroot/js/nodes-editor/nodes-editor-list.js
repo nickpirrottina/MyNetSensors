@@ -1,1052 +1,868 @@
 (function () {
 
 
-
-
-    /*
-     -------------------------------- PANELS -------------------------------------
-    */
-
-
-
-
-
-
-
-    //Panel
-    function Panel() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.PanelNode",
-            'Assembly': "Nodes"
-        };
-        this.bgcolor = "#565656";
-    }
-    Panel.title = "Panel";
-    Panel.prototype.getExtraMenuOptions = function (graphcanvas) {
-        var that = this;
-        return [
-            { content: "Open", callback: function () { window.location = "/NodesEditor/Panel/" + that.id; } },
-            null, //null for horizontal line
-            { content: "Settings", callback: function () { PanelSettings(that) } },
-            null,
-            { content: "Show on Dashboard", callback: function () { var win = window.open("/Dashboard/Panel/" + that.id, '_blank'); win.focus(); } },
-            null,
-            { content: "Export to file", callback: function () { var win = window.open("/NodesEditorAPI/SerializePanelToFile/" + that.id, '_blank'); win.focus(); } },
-            { content: "Export to script", callback: function () { editor.exportPanelToScript(that.id) } },
-            { content: "Export URL", callback: function () { editor.exportPanelURL(that.id) } },
-            null
-        ];
-    }
-    function PanelSettings(node) {
-        $('#node-settings-title').html(node.type);
-
-        $('#node-settings-body').html(
-            '<div class="ui form"><div class="fields">' +
-            '<div class="field">Name: <input type="text" id="node-settings-name"></div>' +
-            '</div></div>'
-        );
-
-        $('#node-settings-name').val(node.properties['PanelName']);
-
-
-        $('#node-settings-panel').modal({
-            dimmerSettings: { opacity: 0.3 },
-            onApprove: function () {
-                $.ajax({
-                    url: "/NodesEditorAPI/PanelSettings/",
-                    type: "POST",
-                    data: {
-                        panelname: $('#node-settings-name').val(),
-                        id: node.id
-                    }
-                });
+            //BasicConstantNode
+            function BasicConstantNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.BasicConstantNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
             }
-        }).modal('setting', 'transition', 'fade up').modal('show');
-    }
-    LiteGraph.registerNodeType("Main/Panel", Panel);
+            BasicConstantNode.title = 'Constant';
+            LiteGraph.registerNodeType('Basic/Constant', BasicConstantNode);
 
+            
 
-
-
-    //Panel Input
-    function PanelInput() {
-        this.properties = {
-            ObjectType: "MyNetSensors.Nodes.PanelInputNode",
-            'Assembly': "Nodes"
-        };
-        this.bgcolor = "#151515";
-
-    }
-    PanelInput.prototype.getExtraMenuOptions = function (graphcanvas) {
-        var that = this;
-        return [{ content: "Settings", callback: function () { InputOutputSettings(that) } }, null];
-    }
-    PanelInput.title = "Panel Input";
-    LiteGraph.registerNodeType("Main/Panel Input", PanelInput);
-
-
-
-
-
-    //Panel Output
-    function PanelOutput() {
-        this.properties = {
-            ObjectType: "MyNetSensors.Nodes.PanelOutputNode",
-            'Assembly': "Nodes"
-        };
-        this.bgcolor = "#151515";
-    }
-    PanelOutput.prototype.getExtraMenuOptions = function (graphcanvas) {
-        var that = this;
-        return [{ content: "Settings", callback: function () { InputOutputSettings(that) } }, null];
-    }
-    PanelOutput.title = "Panel Output";
-    LiteGraph.registerNodeType("Main/Panel Output", PanelOutput);
-
-
-    function InputOutputSettings(node) {
-        $('#node-settings-title').html(node.type);
-
-        $('#node-settings-body').html(
-            '<div class="ui form"><div class="fields">' +
-            '<div class="field">Name: <input type="text" id="node-settings-name"></div>' +
-            '</div></div>'
-        );
-
-        $('#node-settings-name').val(node.properties['Name']);
-
-
-        $('#node-settings-panel').modal({
-            dimmerSettings: { opacity: 0.3 },
-            onApprove: function () {
-                $.ajax({
-                    url: "/NodesEditorAPI/InputOutputSettings/",
-                    type: "POST",
-                    data: {
-                        name: $('#node-settings-name').val(),
-                        id: node.id
-                    }
-                });
+            //ConnectionLocalReceiverNode
+            function ConnectionLocalReceiverNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.ConnectionLocalReceiverNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
             }
-        }).modal('setting', 'transition', 'fade up').modal('show');
-    }
+            ConnectionLocalReceiverNode.title = 'Local Receiver';
+            LiteGraph.registerNodeType('Connection/Local Receiver', ConnectionLocalReceiverNode);
 
+            
 
-
-
-
-    /*
-     -------------------------------- HARDWARE -------------------------------------
-    */
-
-
-
-
-
-
-
-
-
-    //MySensorsNode
-    function MySensorsNode() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.MySensorsNode",
-            'Assembly': "Nodes.MySensors"
-        };
-        this.clonable = false;
-    }
-    MySensorsNode.title = "MySensors Node";
-    MySensorsNode.skip_list = true;
-    LiteGraph.registerNodeType("Nodes/Hardware", MySensorsNode);
-
-
-
-
-
-
-
-
-
-
-
-
-
-    /*
-     -------------------------------- UI -------------------------------------
-    */
-
-
-
-
-    function UINodeSettings(node) {
-        $('#node-settings-title').html(node.type);
-
-        $('#node-settings-body').html(
-            '<div class="ui form"><div class="fields">' +
-            '<div class="field">Name: <input type="text" id="node-settings-name"></div>' +
-            '</div><div class="fields">' +
-            '<div class="field"><div class="ui toggle checkbox"><input type="checkbox" id="node-settings-show"><label>Show on Dashboard main page</label></div></div>' +
-
-            '</div></div>'
-        );
-
-        $('#node-settings-name').val(node.properties['Name']);
-        $('#node-settings-show').prop('checked', node.properties['ShowOnMainPage'] == "true");
-
-
-        $('#node-settings-panel').modal({
-            dimmerSettings: { opacity: 0.3 },
-            onApprove: function () {
-                $.ajax({
-                    url: "/NodesEditorAPI/UINodeSettings/",
-                    type: "POST",
-                    data: {
-                        name: $('#node-settings-name').val(),
-                        show: $('#node-settings-show').prop('checked'),
-                        id: node.id
-                    }
-                });
+            //ConnectionLocalTransmitterNode
+            function ConnectionLocalTransmitterNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.ConnectionLocalTransmitterNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
             }
-        }).modal('setting', 'transition', 'fade up').modal('show');
-    }
+            ConnectionLocalTransmitterNode.title = 'Local Transmitter';
+            LiteGraph.registerNodeType('Connection/Local Transmitter', ConnectionLocalTransmitterNode);
 
+            
 
-
-
-    //UI Label
-    function UILabel() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.UiLabelNode",
-            'Assembly': "Nodes.UI"
-        };
-    }
-    UILabel.prototype.getExtraMenuOptions = function (graphcanvas) {
-        var that = this;
-        return [{ content: "Settings", callback: function () { UINodeSettings(that) } }, null];
-    }
-    UILabel.title = "Label";
-    LiteGraph.registerNodeType("UI/Label", UILabel);
-
-
-
-    //UI State
-    function UIState() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.UiStateNode",
-            'Assembly': "Nodes.UI"
-        };
-    }
-    UIState.prototype.getExtraMenuOptions = function (graphcanvas) {
-        var that = this;
-        return [{ content: "Settings", callback: function () { UINodeSettings(that) } }, null];
-    }
-    UIState.title = "State";
-    LiteGraph.registerNodeType("UI/State", UIState);
-
-
-
-    //UI Progress
-    function UIProgress() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.UiProgressNode",
-            'Assembly': "Nodes.UI"
-        };
-    }
-    UIProgress.prototype.getExtraMenuOptions = function (graphcanvas) {
-        var that = this;
-        return [{ content: "Settings", callback: function () { UINodeSettings(that) } }, null];
-    }
-    UIProgress.title = "Progress";
-    LiteGraph.registerNodeType("UI/Progress", UIProgress);
-
-
-
-    //UI Log
-    function UILog() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.UiLogNode",
-            'Assembly': "Nodes.UI"
-        };
-    }
-    UILog.prototype.getExtraMenuOptions = function (graphcanvas) {
-        var that = this;
-        return [{ content: "Settings", callback: function () { UINodeSettings(that) } }, null];
-    }
-    UILog.title = "Log";
-    LiteGraph.registerNodeType("UI/Log", UILog);
-
-
-
-    //UI Button
-    function UIButton() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.UiButtonNode",
-            'Assembly': "Nodes.UI"
-        };
-    }
-    UIButton.prototype.getExtraMenuOptions = function (graphcanvas) {
-        var that = this;
-        return [{ content: "Settings", callback: function () { UINodeSettings(that) } }, null];
-    }
-    UIButton.title = "Button";
-    LiteGraph.registerNodeType("UI/Button", UIButton);
-
-
-
-    //UI Toggle Button
-    function UIToggleButton() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.UiToggleButtonNode",
-            'Assembly': "Nodes.UI"
-        };
-    }
-    UIToggleButton.prototype.getExtraMenuOptions = function (graphcanvas) {
-        var that = this;
-        return [{ content: "Settings", callback: function () { UINodeSettings(that) } }, null];
-    }
-    UIToggleButton.title = "Toggle Button";
-    LiteGraph.registerNodeType("UI/Toggle Button", UIToggleButton);
-
-
-
-    //UI Switch
-    function UISwitch() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.UiSwitchNode",
-            'Assembly': "Nodes.UI"
-        };
-    }
-    UISwitch.prototype.getExtraMenuOptions = function (graphcanvas) {
-        var that = this;
-        return [{ content: "Settings", callback: function () { UINodeSettings(that) } }, null];
-    }
-    UISwitch.title = "Switch";
-    LiteGraph.registerNodeType("UI/Switch", UISwitch);
-
-
-
-    //UI TextBox
-    function UITextBox() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.UiTextBoxNode",
-            'Assembly': "Nodes.UI"
-        };
-    }
-    UITextBox.prototype.getExtraMenuOptions = function (graphcanvas) {
-        var that = this;
-        return [{ content: "Settings", callback: function () { UINodeSettings(that) } }, null];
-    }
-    UITextBox.title = "TextBox";
-    LiteGraph.registerNodeType("UI/TextBox", UITextBox);
-
-
-
-
-
-
-    //UI Slider
-    function UISlider() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.UiSliderNode",
-            'Assembly': "Nodes.UI"
-        };
-    }
-    UISlider.prototype.getExtraMenuOptions = function (graphcanvas) {
-        var that = this;
-        return [{ content: "Settings", callback: function () { UISliderSettings(that) } }, null];
-    }
-    function UISliderSettings(node) {
-        $('#node-settings-title').html(node.type);
-
-        $('#node-settings-body').html(
-            '<div class="ui form"><div class="fields">' +
-            '<div class="field">Name: <input type="text" id="node-settings-name"></div>' +
-            '</div><div class="fields">' +
-            '<div class="field"><div class="ui toggle checkbox"><input type="checkbox" id="node-settings-show"><label>Show on Dashboard main page</label></div></div>' +
-            '</div><div class="ui divider"></div><div class="fields">' +
-            '<div class="field">Min Value:<input type="text" id="node-settings-min"></div>' +
-            '<div class="field">Max Value:<input type="text" id="node-settings-max"></div>' +
-            '</div></div>'
-        );
-
-        $('#node-settings-name').val(node.properties['Name']);
-        $('#node-settings-min').val(node.properties['Min']);
-        $('#node-settings-max').val(node.properties['Max']);
-        $('#node-settings-show').prop('checked', node.properties['ShowOnMainPage'] == "true");
-
-
-        $('#node-settings-panel').modal({
-            dimmerSettings: { opacity: 0.3 },
-            onApprove: function () {
-                $.ajax({
-                    url: "/NodesEditorAPI/UISliderSettings/",
-                    type: "POST",
-                    data: {
-                        name: $('#node-settings-name').val(),
-                        min: $('#node-settings-min').val(),
-                        max: $('#node-settings-max').val(),
-                        show: $('#node-settings-show').prop('checked'),
-                        id: node.id
-                    }
-                });
+            //ConnectionRemoteReceiverNode
+            function ConnectionRemoteReceiverNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.ConnectionRemoteReceiverNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
             }
-        }).modal('setting', 'transition', 'fade up').modal('show');
-    }
-    UISlider.title = "Slider";
-    LiteGraph.registerNodeType("UI/Slider", UISlider);
+            ConnectionRemoteReceiverNode.title = 'Remote Receiver';
+            LiteGraph.registerNodeType('Connection/Remote Receiver', ConnectionRemoteReceiverNode);
 
+            
 
-
-
-
-    //UI RGB Sliders
-    function UIRGBSliders() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.UiRgbSlidersNode",
-            'Assembly': "Nodes.UI"
-        };
-    }
-    UIRGBSliders.prototype.getExtraMenuOptions = function (graphcanvas) {
-        var that = this;
-        return [{ content: "Settings", callback: function () { UINodeSettings(that) } }, null];
-    }
-    UIRGBSliders.title = "RGB Sliders";
-    LiteGraph.registerNodeType("UI/RGB Sliders", UIRGBSliders);
-
-
-
-    //UI RGBW Sliders
-    function UIRGBWSliders() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.UiRgbwSlidersNode",
-            'Assembly': "Nodes.UI"
-        };
-    }
-    UIRGBWSliders.prototype.getExtraMenuOptions = function (graphcanvas) {
-        var that = this;
-        return [{ content: "Settings", callback: function () { UINodeSettings(that) } }, null];
-    }
-    UIRGBWSliders.title = "RGBW Sliders";
-    LiteGraph.registerNodeType("UI/RGBW Sliders", UIRGBWSliders);
-
-
-
-
-
-
-
-
-    //UI Chart
-    function UIChart() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.UiChartNode",
-            'Assembly': "Nodes.UI"
-        };
-    }
-    UIChart.prototype.getExtraMenuOptions = function (graphcanvas) {
-        var that = this;
-        return [{ content: "Settings", callback: function () { UIChartSettings(that) } }, null];
-    }
-    function UIChartSettings(node) {
-        $('#node-settings-title').html(node.type);
-
-        $('#node-settings-body').html(
-            '<div class="ui form"><div class="fields">' +
-            '<div class="field">Name: <input type="text" id="node-settings-name"></div>' +
-            '</div><div class="fields">' +
-            '<div class="field"><div class="ui toggle checkbox"><input type="checkbox" id="node-settings-show"><label>Show on Dashboard main page</label></div></div>' +
-            '</div><div class="ui divider"></div><div class="fields">' +
-            '<div class="field"><div class="ui toggle checkbox"><input type="checkbox" id="node-settings-usedb"><label>Write data in database</label></div></div>' +
-             '</div><div class="ui divider"></div><div class="fields">' +
-            '<div class="field">Update interval (ms): <input type="text" id="node-settings-update"></div>' +
-
-            '</div></div>'
-        );
-
-        $('#node-settings-name').val(node.properties['Name']);
-        $('#node-settings-show').prop('checked', node.properties['ShowOnMainPage'] == "true");
-        $('#node-settings-usedb').prop('checked', node.properties['WriteInDatabase'] == "true");
-        $('#node-settings-update').val(node.properties['UpdateInterval']);
-
-
-
-        $('#node-settings-panel').modal({
-            dimmerSettings: { opacity: 0.3 },
-            onApprove: function () {
-                $.ajax({
-                    url: "/NodesEditorAPI/UIChartSettings/",
-                    type: "POST",
-                    data: {
-                        name: $('#node-settings-name').val(),
-                        show: $('#node-settings-show').prop('checked'),
-                        writeInDatabase: $('#node-settings-usedb').prop('checked'),
-                        updateInterval: $('#node-settings-update').val(),
-                        id: node.id
-                    }
-                });
+            //ConnectionRemoteTransmitterNode
+            function ConnectionRemoteTransmitterNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.ConnectionRemoteTransmitterNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
             }
-        }).modal('setting', 'transition', 'fade up').modal('show');
-    }
-    UIChart.title = "Chart";
-    LiteGraph.registerNodeType("UI/Chart", UIChart);
+            ConnectionRemoteTransmitterNode.title = 'Remote Transmitter';
+            LiteGraph.registerNodeType('Connection/Remote Transmitter', ConnectionRemoteTransmitterNode);
 
+            
 
-
-
-
-    //UI Timer
-    function UITimer() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.UiTimerNode",
-            'Assembly': "Nodes.UITimer"
-        };
-    }
-    UITimer.prototype.getExtraMenuOptions = function (graphcanvas) {
-        var that = this;
-        return [{ content: "Settings", callback: function () { UINodeSettings(that) } }, null,
-            { content: "Open interface", callback: function () { var win = window.open("/UITimer/Tasks/" + that.id, '_blank'); win.focus(); } }, null
-        ];
-    }
-    UITimer.title = "Timer";
-    LiteGraph.registerNodeType("UI/Timer", UITimer);
-
-
-
-
-
-
-
-
-
-    /*
-     -------------------------------- OTHER -------------------------------------
-    */
-
-
-
-    //Constant
-    function Constant() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.ConstantNode",
-            'Assembly': "Nodes"
-        };
-    }
-    Constant.prototype.getExtraMenuOptions = function (graphcanvas) {
-        var that = this;
-        return [{ content: "Settings", callback: function () { ConstantSettings(that) } }, null];
-    }
-    function ConstantSettings(node) {
-        $('#node-settings-title').html(node.type);
-
-        $('#node-settings-body').html(
-            '<div class="ui form"><div class="fields">' +
-            '<div class="field">Value: <input type="text" id="node-settings-value"></div>' +
-            '</div></div>'
-        );
-
-        $('#node-settings-value').val(node.properties['Value']);
-
-
-        $('#node-settings-panel').modal({
-            dimmerSettings: { opacity: 0.3 },
-            onApprove: function () {
-                $.ajax({
-                    url: "/NodesEditorAPI/ConstantSettings/",
-                    type: "POST",
-                    data: {
-                        value: $('#node-settings-value').val(),
-                        id: node.id
-                    }
-                });
+            //LogicAndNode
+            function LogicAndNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.LogicAndNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
             }
-        }).modal('setting', 'transition', 'fade up').modal('show');
-    }
-    Constant.title = "Constant";
-    LiteGraph.registerNodeType("Basic/Constant", Constant);
+            LogicAndNode.title = 'AND';
+            LiteGraph.registerNodeType('Logic/AND', LogicAndNode);
 
+            
 
-
-
-    //LogicCounter
-    function OperationCounter() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.OperationCounterNode",
-            'Assembly': "Nodes"
-        };
-    }
-    OperationCounter.title = "Counter";
-    LiteGraph.registerNodeType("Operation/Counter", OperationCounter);
-
-
-
-
-
-
-
-
-
-
-    //Connection Transmitter
-    function ConnectionTransmitterNode() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.ConnectionTransmitterNode",
-            'Assembly': "Nodes"
-        };
-    }
-    ConnectionTransmitterNode.prototype.getExtraMenuOptions = function (graphcanvas) {
-        var that = this;
-        return [{ content: "Settings", callback: function () { TransmitterSettings(that) } }, null];
-    }
-    function TransmitterSettings(node) {
-        $('#node-settings-title').html(node.type);
-
-        $('#node-settings-body').html(
-            '<div class="ui form"><div class="fields">' +
-            '<div class="field">Channel: <input type="number" id="node-settings-channel"></div>' +
-            '</div></div>'
-        );
-
-        $('#node-settings-channel').val(node.properties['Channel']);
-
-        $('#node-settings-panel').modal({
-            dimmerSettings: { opacity: 0.3 },
-            onApprove: function () {
-                $.ajax({
-                    url: "/NodesEditorAPI/TransmitterSettings/",
-                    type: "POST",
-                    data: {
-                        channel: $('#node-settings-channel').val(),
-                        id: node.id
-                    }
-                });
+            //LogicNotNode
+            function LogicNotNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.LogicNotNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
             }
-        }).modal('setting', 'transition', 'fade up').modal('show');
-    }
-    ConnectionTransmitterNode.title = "Transmitter";
-    LiteGraph.registerNodeType("Connection/Transmitter", ConnectionTransmitterNode);
+            LogicNotNode.title = 'NOT';
+            LiteGraph.registerNodeType('Logic/NOT', LogicNotNode);
 
+            
 
-
-    //Connection Receiver
-    function ConnectionReceiverNode() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.ConnectionReceiverNode",
-            'Assembly': "Nodes"
-        };
-    }
-    ConnectionReceiverNode.prototype.getExtraMenuOptions = function (graphcanvas) {
-        var that = this;
-        return [{ content: "Settings", callback: function () { ReceiverSettings(that) } }, null];
-    }
-    function ReceiverSettings(node) {
-        $('#node-settings-title').html(node.type);
-
-        $('#node-settings-body').html(
-            '<div class="ui form"><div class="fields">' +
-            '<div class="field">Channel: <input type="number" id="node-settings-channel"></div>' +
-            '</div></div>'
-        );
-
-        $('#node-settings-channel').val(node.properties['Channel']);
-
-        $('#node-settings-panel').modal({
-            dimmerSettings: { opacity: 0.3 },
-            onApprove: function () {
-                $.ajax({
-                    url: "/NodesEditorAPI/ReceiverSettings/",
-                    type: "POST",
-                    data: {
-                        channel: $('#node-settings-channel').val(),
-                        id: node.id
-                    }
-                });
+            //LogicOrNode
+            function LogicOrNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.LogicOrNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
             }
-        }).modal('setting', 'transition', 'fade up').modal('show');
-    }
-    ConnectionReceiverNode.title = "Receiver";
-    LiteGraph.registerNodeType("Connection/Receiver", ConnectionReceiverNode);
+            LogicOrNode.title = 'OR';
+            LiteGraph.registerNodeType('Logic/OR', LogicOrNode);
 
+            
 
+            //PanelNode
+            function PanelNode() {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.PanelNode',
+                    'Assembly': 'Nodes'
+                };
+                this.bgcolor = '#565656';
+            }
+            PanelNode.title = 'Panel';
+            PanelNode.prototype.getExtraMenuOptions = function (graphcanvas) {
+                var that = this;
+                return [
+                    { content: 'Open', callback: function () { window.location = '/NodesEditor/Panel/' + that.id; } },
+                    null, //null for horizontal line
+                    { content: 'Show on Dashboard', callback: function () { var win = window.open('/Dashboard/Panel/' + that.id, '_blank'); win.focus(); } },
+                    null,
+                    { content: 'Export to file', callback: function () { var win = window.open('/NodesEditorAPI/SerializePanelToFile/' + that.id, '_blank'); win.focus(); } },
+                    { content: 'Export to script', callback: function () { editor.exportPanelToScript(that.id) } },
+                    { content: 'Export URL', callback: function () { editor.exportPanelURL(that.id) } },
+                    null
+                ];
+            }
+            LiteGraph.registerNodeType('Main/Panel', PanelNode);
 
+            
 
-    //ConnectionRemoteTransmitter
-    function ConnectionRemoteTransmitter() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.ConnectionRemoteTransmitter",
-            'Assembly': "Nodes"
-        };
-    }
-    ConnectionRemoteTransmitter.title = "Remote Transmitter";
-    LiteGraph.registerNodeType("Connection/Remote Transmitter", ConnectionRemoteTransmitter);
+            //PanelOutputNode
+            function PanelInputNode() {
+                this.properties = {
+                    ObjectType: 'MyNetSensors.Nodes.PanelInputNode',
+                    'Assembly': 'Nodes'
+                };
+                this.bgcolor = '#151515';
 
+            }
+            PanelInputNode.title = 'Panel Input';
+            LiteGraph.registerNodeType('Main/Panel Input', PanelInputNode);
 
+            
 
+            //PanelOutputNode
+            function PanelOutputNode() {
+                this.properties = {
+                    ObjectType: 'MyNetSensors.Nodes.PanelOutputNode',
+                    'Assembly': 'Nodes'
+                };
+                this.bgcolor = '#151515';
+            }
+            PanelOutputNode.title = 'Panel Output';
+            LiteGraph.registerNodeType('Main/Panel Output', PanelOutputNode);
 
-    //ConnectionRemoteReceiverNode
-    function ConnectionRemoteReceiverNode() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.ConnectionRemoteReceiverNode",
-            'Assembly': "Nodes"
-        };
-    }
-    ConnectionRemoteReceiverNode.title = "Remote Receiver";
-    LiteGraph.registerNodeType("Connection/Remote Receiver", ConnectionRemoteReceiverNode);
+            
 
+            //MathClampNode
+            function MathClampNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.MathClampNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            MathClampNode.title = 'Clamp';
+            LiteGraph.registerNodeType('Math/Clamp', MathClampNode);
 
+            
 
+            //MathCosNode
+            function MathCosNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.MathCosNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            MathCosNode.title = 'Cos';
+            LiteGraph.registerNodeType('Math/Cos', MathCosNode);
 
+            
 
+            //MathDivideNode
+            function MathDivideNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.MathDivideNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            MathDivideNode.title = 'Divide';
+            LiteGraph.registerNodeType('Math/Divide', MathDivideNode);
 
+            
 
-    //---------------------------------------------------------------------------------
+            //MathMinusNode
+            function MathMinusNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.MathMinusNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            MathMinusNode.title = 'Minus';
+            LiteGraph.registerNodeType('Math/Minus', MathMinusNode);
 
+            
 
+            //MathModulusNode
+            function MathModulusNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.MathModulusNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            MathModulusNode.title = 'Modulus';
+            LiteGraph.registerNodeType('Math/Modulus', MathModulusNode);
 
-    //LogicAnd
-    function LogicAnd() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.LogicAndNode",
-            'Assembly': "Nodes"
-        };
-    }
-    LogicAnd.title = "AND";
-    LiteGraph.registerNodeType("Logic/AND", LogicAnd);
+            
 
-    //LogicOr
-    function LogicOr() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.LogicOrNode",
-            'Assembly': "Nodes"
-        };
-    }
-    LogicOr.title = "OR";
-    LiteGraph.registerNodeType("Logic/OR", LogicOr);
+            //MathMultiplyNode
+            function MathMultiplyNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.MathMultiplyNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            MathMultiplyNode.title = 'Multiply';
+            LiteGraph.registerNodeType('Math/Multiply', MathMultiplyNode);
 
-    //LogicNot
-    function LogicNot() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.LogicNotNode",
-            'Assembly': "Nodes"
-        };
-    }
-    LogicNot.title = "NOT";
-    LiteGraph.registerNodeType("Logic/NOT", LogicNot);
+            
 
+            //MathPlusNode
+            function MathPlusNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.MathPlusNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            MathPlusNode.title = 'Plus';
+            LiteGraph.registerNodeType('Math/Plus', MathPlusNode);
 
+            
 
-    //MathPlus
-    function MathPlus() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.MathPlusNode",
-            'Assembly': "Nodes"
-        };
-    }
-    MathPlus.title = "Plus";
-    LiteGraph.registerNodeType("Math/Plus", MathPlus);
+            //MathPowNode
+            function MathPowNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.MathPowNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            MathPowNode.title = 'Pow';
+            LiteGraph.registerNodeType('Math/Pow', MathPowNode);
 
-    //MathMinus
-    function MathMinus() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.MathMinusNode",
-            'Assembly': "Nodes"
-        };
-    }
-    MathMinus.title = "Minus";
-    LiteGraph.registerNodeType("Math/Minus", MathMinus);
+            
 
-    //MathMultiply
-    function MathMultiply() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.MathMultiplyNode",
-            'Assembly': "Nodes"
-        };
-    }
-    MathMultiply.title = "Multiply";
-    LiteGraph.registerNodeType("Math/Multiply", MathMultiply);
+            //MathRemapNode
+            function MathRemapNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.MathRemapNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            MathRemapNode.title = 'Remap';
+            LiteGraph.registerNodeType('Math/Remap', MathRemapNode);
 
-    //MathDivide
-    function MathDivide() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.MathDivideNode",
-            'Assembly': "Nodes"
-        };
-    }
-    MathDivide.title = "Divide";
-    LiteGraph.registerNodeType("Math/Divide", MathDivide);
+            
 
-    //MathSin
-    function MathSin() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.MathSinNode",
-            'Assembly': "Nodes"
-        };
-    }
-    MathSin.title = "Sin";
-    LiteGraph.registerNodeType("Math/Sin", MathSin);
+            //MathRoundNode
+            function MathRoundNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.MathRoundNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            MathRoundNode.title = 'Round';
+            LiteGraph.registerNodeType('Math/Round', MathRoundNode);
 
-    //MathCos
-    function MathCos() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.MathCosNode",
-            'Assembly': "Nodes"
-        };
-    }
-    MathCos.title = "Cos";
-    LiteGraph.registerNodeType("Math/Cos", MathCos);
+            
 
-    //MathTan
-    function MathTan() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.MathTanNode",
-            'Assembly': "Nodes"
-        };
-    }
-    MathTan.title = "Tan";
-    LiteGraph.registerNodeType("Math/Tan", MathTan);
+            //MathSinNode
+            function MathSinNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.MathSinNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            MathSinNode.title = 'Sin';
+            LiteGraph.registerNodeType('Math/Sin', MathSinNode);
 
-    //MathModulus
-    function MathModulus() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.MathModulusNode",
-            'Assembly': "Nodes"
-        };
-    }
-    MathModulus.title = "Modulus";
-    LiteGraph.registerNodeType("Math/Modulus", MathModulus);
+            
 
-    //MathSqrt
-    function MathSqrt() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.MathSqrtNode",
-            'Assembly': "Nodes"
-        };
-    }
-    MathSqrt.title = "Sqrt";
-    LiteGraph.registerNodeType("Math/Sqrt", MathSqrt);
+            //MathSqrtNode
+            function MathSqrtNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.MathSqrtNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            MathSqrtNode.title = 'Sqrt';
+            LiteGraph.registerNodeType('Math/Sqrt', MathSqrtNode);
 
-    //MathPow
-    function MathPow() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.MathPowNode",
-            'Assembly': "Nodes"
-        };
-    }
-    MathPow.title = "Pow";
-    LiteGraph.registerNodeType("Math/Pow", MathPow);
+            
 
-    //MathRound
-    function MathRound() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.MathRoundNode",
-            'Assembly': "Nodes"
-        };
-    }
-    MathRound.title = "Round";
-    LiteGraph.registerNodeType("Math/Round", MathRound);
+            //MathTanNode
+            function MathTanNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.MathTanNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            MathTanNode.title = 'Tan';
+            LiteGraph.registerNodeType('Math/Tan', MathTanNode);
 
-    //MathRemapNode
-    function MathRemap() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.MathRemapNode",
-            'Assembly': "Nodes"
-        };
-    }
-    MathRemap.title = "Remap";
-    LiteGraph.registerNodeType("Math/Remap", MathRemap);
+            
 
-    //MathClampNode
-    function MathClamp() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.MathClampNode",
-            'Assembly': "Nodes"
-        };
-    }
-    MathClamp.title = "Clamp";
-    LiteGraph.registerNodeType("Math/Clamp", MathClamp);
+            //OperationAccumulatorNode
+            function OperationAccumulatorNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.Nodes.OperationAccumulatorNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            OperationAccumulatorNode.title = 'Accumulator';
+            LiteGraph.registerNodeType('Operation/Accumulator', OperationAccumulatorNode);
 
-    //OperationGeneratorNode
-    function OperationGeneratorNode() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.OperationGeneratorNode",
-            'Assembly': "Nodes"
-        };
-    }
-    OperationGeneratorNode.title = "Generator";
-    LiteGraph.registerNodeType("Operation/Generator", OperationGeneratorNode);
+            
 
-    //OperationCompareEqual
-    function OperationCompareEqual() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.OperationCompareEqualNode",
-            'Assembly': "Nodes"
-        };
-    }
-    OperationCompareEqual.title = "Compare Equal";
-    LiteGraph.registerNodeType("Operation/Compare Equal", OperationCompareEqual);
+            //OperationCompareEqualNode
+            function OperationCompareEqualNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.OperationCompareEqualNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            OperationCompareEqualNode.title = 'Compare Equal';
+            LiteGraph.registerNodeType('Operation/Compare Equal', OperationCompareEqualNode);
 
-    //OperationCompareNotEqual
-    function OperationCompareNotEqual() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.OperationCompareNotEqualNode",
-            'Assembly': "Nodes"
-        };
-    }
-    OperationCompareNotEqual.title = "Compare NotEqual";
-    LiteGraph.registerNodeType("Operation/Compare NotEqual", OperationCompareNotEqual);
+            
 
-    //OperationCompareGreater
-    function OperationCompareGreater() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.OperationCompareGreaterNode",
-            'Assembly': "Nodes"
-        };
-    }
-    OperationCompareGreater.title = "Compare Greater";
-    LiteGraph.registerNodeType("Operation/Compare Greater", OperationCompareGreater);
+            //OperationCompareGreaterNode
+            function OperationCompareGreaterNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.OperationCompareGreaterNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            OperationCompareGreaterNode.title = 'Compare Greater';
+            LiteGraph.registerNodeType('Operation/Compare Greater', OperationCompareGreaterNode);
 
-    //OperationCompareLower
-    function OperationCompareLower() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.OperationCompareLowerNode",
-            'Assembly': "Nodes"
-        };
-    }
-    OperationCompareLower.title = "Compare Lower";
-    LiteGraph.registerNodeType("Operation/Compare Lower", OperationCompareLower);
+            
 
-    //OperationFlipFlop
-    function OperationFlipFlop() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.OperationFlipflopNode",
-            'Assembly': "Nodes"
-        };
-    }
-    OperationFlipFlop.title = "Flip-Flop";
-    LiteGraph.registerNodeType("Operation/Flip-Flop", OperationFlipFlop);
+            //OperationCompareLowerNode
+            function OperationCompareLowerNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.OperationCompareLowerNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            OperationCompareLowerNode.title = 'Compare Lower';
+            LiteGraph.registerNodeType('Operation/Compare Lower', OperationCompareLowerNode);
 
-    //OperationGate
-    function OperationGate() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.OperationGateNode",
-            'Assembly': "Nodes"
-        };
-    }
-    OperationGate.title = "Gate";
-    LiteGraph.registerNodeType("Operation/Gate", OperationGate);
+            
 
-    //OperationRandom
-    function OperationRandom() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.OperationRandomNode",
-            'Assembly': "Nodes"
-        };
-    }
-    OperationRandom.title = "Random";
-    LiteGraph.registerNodeType("Operation/Random", OperationRandom);
+            //OperationCompareNotEqualNode
+            function OperationCompareNotEqualNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.OperationCompareNotEqualNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            OperationCompareNotEqualNode.title = 'Compare NotEqual';
+            LiteGraph.registerNodeType('Operation/Compare NotEqual', OperationCompareNotEqualNode);
 
+            
 
-    //OperationEventCounterNode
-    function OperationEventCounterNode() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.OperationEventCounterNode",
-            'Assembly': "Nodes"
-        };
-    }
-    OperationEventCounterNode.title = "Event Counter";
-    LiteGraph.registerNodeType("Operation/Event Counter", OperationEventCounterNode);
+            //OperationCounterNode
+            function OperationCounterNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.OperationCounterNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            OperationCounterNode.title = 'Counter';
+            LiteGraph.registerNodeType('Operation/Counter', OperationCounterNode);
 
+            
 
-    //OperationEventsFreqMeterNode
-    function OperationEventsFreqMeterNode() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.OperationEventsFreqMeterNode",
-            'Assembly': "Nodes"
-        };
-        }
-    OperationEventsFreqMeterNode.title = "Events Freq Meter";
-    LiteGraph.registerNodeType("Operation/Events Freq Meter", OperationEventsFreqMeterNode);
+            //OperationCrossfadeNode
+            function OperationCrossfadeNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.OperationCrossfadeNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            OperationCrossfadeNode.title = 'Crossfade';
+            LiteGraph.registerNodeType('Operation/Crossfade', OperationCrossfadeNode);
 
+            
 
-    //OperationEventsDelayMeterNode
-    function OperationEventsDelayMeterNode() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.OperationEventsDelayMeterNode",
-            'Assembly': "Nodes"
-        };
-    }
-    OperationEventsDelayMeterNode.title = "Events Delay Meter";
-    LiteGraph.registerNodeType("Operation/Events Delay Meter", OperationEventsDelayMeterNode);
+            //OperationEventCounterNode
+            function OperationEventCounterNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.OperationEventCounterNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            OperationEventCounterNode.title = 'Event Counter';
+            LiteGraph.registerNodeType('Operation/Event Counter', OperationEventCounterNode);
 
+            
 
+            //OperationEventsDelayMeterNode
+            function OperationEventsDelayMeterNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.OperationEventsDelayMeterNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            OperationEventsDelayMeterNode.title = 'Events Delay Meter';
+            LiteGraph.registerNodeType('Operation/Events Delay Meter', OperationEventsDelayMeterNode);
 
-    //OperationMixerNode
-    function OperationMixer() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.OperationMixerNode",
-            'Assembly': "Nodes"
-        };
-    }
-    OperationMixer.title = "Mixer";
-    LiteGraph.registerNodeType("Operation/Mixer", OperationMixer);
+            
 
-    //OperationxFader
-    function OperationxFader() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.OperationxFader",
-            'Assembly': "Nodes"
-        };
-    }
-    OperationxFader.title = "xFader";
-    LiteGraph.registerNodeType("Operation/xFader", OperationxFader);
+            //OperationEventsFreqMeterNode
+            function OperationEventsFreqMeterNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.OperationEventsFreqMeterNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            OperationEventsFreqMeterNode.title = 'Events Freq Meter';
+            LiteGraph.registerNodeType('Operation/Events Freq Meter', OperationEventsFreqMeterNode);
 
-    //SystemBeep
-    function SystemBeep() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.SystemBeepNode",
-            'Assembly': "Nodes"
-        };
-    }
-    SystemBeep.title = "Beep";
-    LiteGraph.registerNodeType("System/Beep", SystemBeep);
+            
 
-    //SystemBeepAdvanced
-    function SystemBeepAdvance() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.SystemBeepAdvancedNode",
-            'Assembly': "Nodes"
-        };
-    }
-    SystemBeepAdvance.title = "Beep Advanced";
-    LiteGraph.registerNodeType("System/Beep Advanced", SystemBeepAdvance);
+            //OperationFlipflopNode
+            function OperationFlipflopNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.OperationFlipflopNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            OperationFlipflopNode.title = 'Flip-Flop';
+            LiteGraph.registerNodeType('Operation/Flip-Flop', OperationFlipflopNode);
 
-    //DelayTimer
-    function DelayTimerNode() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.DelayTimerNode",
-            'Assembly': "Nodes"
-        };
-    }
-    DelayTimerNode.title = "Delay Timer";
-    LiteGraph.registerNodeType("Delay/Delay Timer", DelayTimerNode);
+            
 
-    //OperationSwitchNode
-    function OperationSwitchInNode() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.OperationSwitchInNode",
-            'Assembly': "Nodes"
-        };
-    }
-    OperationSwitchInNode.title = "Switch in";
-    LiteGraph.registerNodeType("Operation/Switch in", OperationSwitchInNode);
+            //OperationGateNode
+            function OperationGateNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.OperationGateNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            OperationGateNode.title = 'Gate';
+            LiteGraph.registerNodeType('Operation/Gate', OperationGateNode);
 
-    //OperationSwitchNode
-    function OperationSwitchOutNode() {
-        this.properties = {
-            'ObjectType': "MyNetSensors.Nodes.OperationSwitchOutNode",
-            'Assembly': "Nodes"
-        };
-    }
-    OperationSwitchOutNode.title = "Switch out";
-    LiteGraph.registerNodeType("Operation/Switch out", OperationSwitchOutNode);
+            
 
+            //OperationMixerNode
+            function OperationMixerNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.OperationMixerNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            OperationMixerNode.title = 'Mixer';
+            LiteGraph.registerNodeType('Operation/Mixer', OperationMixerNode);
+
+            
+
+            //OperationRandomNode
+            function OperationRandomNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.OperationRandomNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            OperationRandomNode.title = 'Random';
+            LiteGraph.registerNodeType('Operation/Random', OperationRandomNode);
+
+            
+
+            //OperationSeparatorNode
+            function OperationSeparatorNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.Nodes.OperationSeparatorNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            OperationSeparatorNode.title = 'Separator';
+            LiteGraph.registerNodeType('Operation/Separator', OperationSeparatorNode);
+
+            
+
+            //OperationSwitchInNode
+            function OperationSwitchInNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.OperationSwitchInNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            OperationSwitchInNode.title = 'Switch in';
+            LiteGraph.registerNodeType('Operation/Switch in', OperationSwitchInNode);
+
+            
+
+            //OperationSwitchOutNode
+            function OperationSwitchOutNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.OperationSwitchOutNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            OperationSwitchOutNode.title = 'Switch out';
+            LiteGraph.registerNodeType('Operation/Switch out', OperationSwitchOutNode);
+
+            
+
+            //RgbNumbersToRgbNode
+            function RgbNumbersToRgbNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.Nodes.RgbNumbersToRgbNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            RgbNumbersToRgbNode.title = 'Numbers to RGB';
+            LiteGraph.registerNodeType('RGB/Numbers to RGB', RgbNumbersToRgbNode);
+
+            
+
+            //RgbNumbersToRgbwNode
+            function RgbNumbersToRgbwNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.Nodes.RgbNumbersToRgbwNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            RgbNumbersToRgbwNode.title = 'Numbers to RGBW';
+            LiteGraph.registerNodeType('RGB/Numbers to RGBW', RgbNumbersToRgbwNode);
+
+            
+
+            //RgbRgbRemapNode
+            function RgbRgbRemapNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.Nodes.RgbRgbRemapNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            RgbRgbRemapNode.title = 'RGB Remap';
+            LiteGraph.registerNodeType('RGB/RGB Remap', RgbRgbRemapNode);
+
+            
+
+            //RgbRgbToNumbersNode
+            function RgbRgbToNumbersNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.Nodes.RgbRgbToNumbersNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            RgbRgbToNumbersNode.title = 'RGB to Numbers';
+            LiteGraph.registerNodeType('RGB/RGB to Numbers', RgbRgbToNumbersNode);
+
+            
+
+            //RgbRgbwRemapNode
+            function RgbRgbwRemapNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.Nodes.RgbRgbwRemapNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            RgbRgbwRemapNode.title = 'RGBW Remap';
+            LiteGraph.registerNodeType('RGB/RGBW Remap', RgbRgbwRemapNode);
+
+            
+
+            //RgbRgbwToNumbersNode
+            function RgbRgbwToNumbersNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.Nodes.RgbRgbwToNumbersNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            RgbRgbwToNumbersNode.title = 'RGBW to Numbers';
+            LiteGraph.registerNodeType('RGB/RGBW to Numbers', RgbRgbwToNumbersNode);
+
+            
+
+            //SystemBeepNode
+            function SystemBeepNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.SystemBeepNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            SystemBeepNode.title = 'Beep';
+            LiteGraph.registerNodeType('System/Beep', SystemBeepNode);
+
+            
+
+            //SystemBeepAdvancedNode
+            function SystemBeepAdvancedNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.SystemBeepAdvancedNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            SystemBeepAdvancedNode.title = 'Beep Advanced';
+            LiteGraph.registerNodeType('System/Beep Advanced', SystemBeepAdvancedNode);
+
+            
+
+            //SystemFileNode
+            function SystemFileNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.SystemFileNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            SystemFileNode.title = 'File';
+            LiteGraph.registerNodeType('System/File', SystemFileNode);
+
+            
+
+            //SystemJsonFileNode
+            function SystemJsonFileNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.SystemJsonFileNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            SystemJsonFileNode.title = 'Json File';
+            LiteGraph.registerNodeType('System/Json File', SystemJsonFileNode);
+
+            
+
+            //SystemRunNode
+            function SystemRunNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.SystemRunNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            SystemRunNode.title = 'Run';
+            LiteGraph.registerNodeType('System/Run', SystemRunNode);
+
+            
+
+            //TimeDelayTimerNode
+            function TimeDelayTimerNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.TimeDelayTimerNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            TimeDelayTimerNode.title = 'Delay Timer';
+            LiteGraph.registerNodeType('Time/Delay Timer', TimeDelayTimerNode);
+
+            
+
+            //TimeGeneratorNode
+            function TimeGeneratorNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.TimeGeneratorNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            TimeGeneratorNode.title = 'Generator';
+            LiteGraph.registerNodeType('Time/Generator', TimeGeneratorNode);
+
+            
+
+            //UiAudioNode
+            function UiAudioNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.UiAudioNode',
+                    'Assembly': 'Nodes.UI, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            UiAudioNode.title = 'UI Audio';
+            LiteGraph.registerNodeType('UI/Audio', UiAudioNode);
+
+            
+
+            //UiButtonNode
+            function UiButtonNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.UiButtonNode',
+                    'Assembly': 'Nodes.UI, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            UiButtonNode.title = 'UI Button';
+            LiteGraph.registerNodeType('UI/Button', UiButtonNode);
+
+            
+
+            //UiChartNode
+            function UiChartNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.UiChartNode',
+                    'Assembly': 'Nodes.UI, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            UiChartNode.title = 'UI Chart';
+            LiteGraph.registerNodeType('UI/Chart', UiChartNode);
+
+            
+
+            //UiLabelNode
+            function UiLabelNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.UiLabelNode',
+                    'Assembly': 'Nodes.UI, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            UiLabelNode.title = 'UI Label';
+            LiteGraph.registerNodeType('UI/Label', UiLabelNode);
+
+            
+
+            //UiLogNode
+            function UiLogNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.UiLogNode',
+                    'Assembly': 'Nodes.UI, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            UiLogNode.title = 'UI Log';
+            LiteGraph.registerNodeType('UI/Log', UiLogNode);
+
+            
+
+            //UiProgressNode
+            function UiProgressNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.UiProgressNode',
+                    'Assembly': 'Nodes.UI, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            UiProgressNode.title = 'UI Progress';
+            LiteGraph.registerNodeType('UI/Progress', UiProgressNode);
+
+            
+
+            //UiRgbSlidersNode
+            function UiRgbSlidersNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.UiRgbSlidersNode',
+                    'Assembly': 'Nodes.UI, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            UiRgbSlidersNode.title = 'UI RGB Sliders';
+            LiteGraph.registerNodeType('UI/RGB Sliders', UiRgbSlidersNode);
+
+            
+
+            //UiRgbwSlidersNode
+            function UiRgbwSlidersNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.UiRgbwSlidersNode',
+                    'Assembly': 'Nodes.UI, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            UiRgbwSlidersNode.title = 'UI RGBW Sliders';
+            LiteGraph.registerNodeType('UI/RGBW Sliders', UiRgbwSlidersNode);
+
+            
+
+            //UiSliderNode
+            function UiSliderNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.UiSliderNode',
+                    'Assembly': 'Nodes.UI, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            UiSliderNode.title = 'UI Slider';
+            LiteGraph.registerNodeType('UI/Slider', UiSliderNode);
+
+            
+
+            //UiStateNode
+            function UiStateNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.UiStateNode',
+                    'Assembly': 'Nodes.UI, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            UiStateNode.title = 'UI State';
+            LiteGraph.registerNodeType('UI/State', UiStateNode);
+
+            
+
+            //UiSwitchNode
+            function UiSwitchNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.UiSwitchNode',
+                    'Assembly': 'Nodes.UI, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            UiSwitchNode.title = 'UI Switch';
+            LiteGraph.registerNodeType('UI/Switch', UiSwitchNode);
+
+            
+
+            //UiTextBoxNode
+            function UiTextBoxNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.UiTextBoxNode',
+                    'Assembly': 'Nodes.UI, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            UiTextBoxNode.title = 'UI TextBox';
+            LiteGraph.registerNodeType('UI/TextBox', UiTextBoxNode);
+
+            
+
+            //UiTimerNode
+            function UiTimerNode() {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.UiTimerNode',
+                    'Assembly': 'Nodes.UITimer'
+                };
+            }
+            UiTimerNode.prototype.getExtraMenuOptions = function(graphcanvas)
+            {
+                var that = this;
+                return [
+                { content: 'Open interface', callback: function() { var win = window.open('/UITimer/Tasks/' + that.id, '_blank'); win.focus(); } }
+                    , null
+                ];
+            }
+            UiTimerNode.title = 'UI Timer';
+            LiteGraph.registerNodeType('UI/Timer', UiTimerNode);
+
+            
+
+            //UiToggleButtonNode
+            function UiToggleButtonNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.UiToggleButtonNode',
+                    'Assembly': 'Nodes.UI, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            UiToggleButtonNode.title = 'UI Toggle';
+            LiteGraph.registerNodeType('UI/Toggle Button', UiToggleButtonNode);
+
+            
+
+            //UiVoiceGoogleNode
+            function UiVoiceGoogleNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.UiVoiceGoogleNode',
+                    'Assembly': 'Nodes.UI, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            UiVoiceGoogleNode.title = 'UI Voice Google';
+            LiteGraph.registerNodeType('UI/Voice Google', UiVoiceGoogleNode);
+
+            
+
+            //UiVoiceYandexNode
+            function UiVoiceYandexNode () {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.UiVoiceYandexNode',
+                    'Assembly': 'Nodes.UI, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            UiVoiceYandexNode.title = 'UI Voice Yandex';
+            LiteGraph.registerNodeType('UI/Voice Yandex', UiVoiceYandexNode);
+
+            
 })();

@@ -14,9 +14,7 @@ namespace MyNetSensors.Nodes
 {
     public class MathRemapNode : Node
     {
-        /// <summary>
-        /// MathRemapNode (5 inputs, 1 output).
-        /// </summary>
+
         public MathRemapNode() : base(5, 1)
         {
             this.Title = "Remap";
@@ -44,8 +42,7 @@ namespace MyNetSensors.Nodes
         {
             if (Inputs.Any(i => i.Value == null))
             {
-                LogInfo("[NULL]");
-                Outputs[0].Value = null;
+                ResetOutputs();
                 return;
             }
 
@@ -60,13 +57,11 @@ namespace MyNetSensors.Nodes
                 Double outMax = Double.Parse(Inputs[4].Value);
 
                 Double result = (value - inMin) / (InMax - inMin) * (outMax - outMin) + outMin;
-                LogInfo($"[{value}] remapped to [{result}]");
                 Outputs[0].Value = result.ToString();
             }
             catch
             {
-                Outputs[0].Value = null;
-                LogInfo("[NULL]");
+                ResetOutputs();
             }
         }
     }

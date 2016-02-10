@@ -11,12 +11,10 @@ namespace MyNetSensors.Nodes
 
     public class MathDivideNode : Node
     {
-        /// <summary>
-        /// Math Divide (2 inputs, 1 output).
-        /// </summary>
+
         public MathDivideNode() : base(2, 1)
         {
-            this.Title = "Math Divide";
+            this.Title = "Divide";
             this.Type = "Math/Divide";
 
             Inputs[0].Type = DataType.Number;
@@ -32,8 +30,7 @@ namespace MyNetSensors.Nodes
         {
             if (Inputs.Any(i => i.Value == null))
             {
-                LogInfo("[NULL]");
-                Outputs[0].Value = null;
+                ResetOutputs();
                 return;
             }
 
@@ -43,13 +40,11 @@ namespace MyNetSensors.Nodes
                 Double b = Double.Parse(Inputs[1].Value);
                 Double c = a / b;
 
-                LogInfo($"[{a}] / [{b}] = [{c}]");
                 Outputs[0].Value = c.ToString();
             }
             catch
             {
                 Outputs[0].Value = null;
-                LogInfo("[NULL]");
             }
         }
     }

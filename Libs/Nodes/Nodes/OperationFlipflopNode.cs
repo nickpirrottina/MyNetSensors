@@ -16,9 +16,6 @@ namespace MyNetSensors.Nodes
         private int part = 0;
         string result = null;
 
-        /// <summary>
-        /// Flip-Flop (1 input, 1 output).
-        /// </summary>
         public OperationFlipflopNode() : base(1, 1)
         {
             this.Title = "Flip-Flop";
@@ -36,8 +33,7 @@ namespace MyNetSensors.Nodes
         {
             if (Inputs.Any(i => i.Value == null))
             {
-                LogInfo("[NULL]");
-                Outputs[0].Value = null;
+                ResetOutputs();
                 return;
             }
 
@@ -76,7 +72,6 @@ namespace MyNetSensors.Nodes
                     break;
             }
 
-            LogInfo($"[{Inputs[0].Value}] Flip-Flop to [{result}]");
             Outputs[0].Value = result;
         }
     }

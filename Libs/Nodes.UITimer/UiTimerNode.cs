@@ -7,7 +7,7 @@
         {
             this.Title = "UI Timer";
             this.Type = "UI/Timer";
-            this.Name = "Timer";
+            this.SetDefaultName("Timer");
         }
 
         public override void Loop()
@@ -20,8 +20,32 @@
 
         public void SetState(string state)
         {
-            LogInfo($"UI Timer [{Name}]: {state}");
             Outputs[0].Value = state;
+        }
+
+        public override string GetJsListGenerationScript()
+        {
+            return @"
+
+            //UiTimerNode
+            function UiTimerNode() {
+                this.properties = {
+                    'ObjectType': 'MyNetSensors.Nodes.UiTimerNode',
+                    'Assembly': 'Nodes.UITimer'
+                };
+            }
+            UiTimerNode.prototype.getExtraMenuOptions = function(graphcanvas)
+            {
+                var that = this;
+                return [
+                { content: 'Open interface', callback: function() { var win = window.open('/UITimer/Tasks/' + that.id, '_blank'); win.focus(); } }
+                    , null
+                ];
+            }
+            UiTimerNode.title = 'UI Timer';
+            LiteGraph.registerNodeType('UI/Timer', UiTimerNode);
+
+            ";
         }
     }
 }

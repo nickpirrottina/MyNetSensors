@@ -2504,7 +2504,7 @@ LGraphCanvas.prototype.processMouseDown = function (e) {
         if (!e.shiftKey) //REFACTOR: integrate with function
         {
             //derwish edit
-                //no node or another node selected
+            //no node or another node selected
             if (!n || !this.selected_nodes[n.id]) {
 
                 var todeselect = [];
@@ -4320,23 +4320,25 @@ LGraphCanvas.prototype.getCanvasMenuOptions = function () {
 }
 
 LGraphCanvas.prototype.getNodeMenuOptions = function (node) {
-    var options = null;
+    var options = [];
+
+    //derwish added
+    if (node.properties["Settings"]) {
+        options.push({ content: "Settings", callback: function () { NodeSettings(node) } });
+        options.push(null);
+    }
+
+
+    options.push({ content: "Description", callback: function () { editor.showNodeDescrition(node) } });
+    options.push(null);
+
+
+    options.push({ content: "Collapse", callback: LGraphCanvas.onMenuNodeCollapse });
 
     if (node.getMenuOptions)
         options = node.getMenuOptions(this);
-    else
-        options = [
-            //derwish remove
-			//{ content: "Inputs", is_menu: true, disabled: true, callback: LGraphCanvas.onMenuNodeInputs },
-			//{content:"Outputs", is_menu: true, disabled:true, callback: LGraphCanvas.onMenuNodeOutputs },
-			//null,
-			{ content: "Collapse", callback: LGraphCanvas.onMenuNodeCollapse }
-            //derwish remove
-			//{content:"Pin", callback: LGraphCanvas.onMenuNodePin },
-			//{content:"Colors", is_menu: true, callback: LGraphCanvas.onMenuNodeColors },
-			//{content:"Shapes", is_menu: true, callback: LGraphCanvas.onMenuNodeShapes },
-			//null
-        ];
+
+
 
     if (node.getExtraMenuOptions) {
         var extra = node.getExtraMenuOptions(this);
@@ -4616,8 +4618,10 @@ LiteGraph.createContextualMenu = function (values, options, ref_window) {
 
         if (aux == this) return;
         this.mouse_inside = false;
-        if (!this.block_close)
-            this.closeMenu();
+
+        //derwish remove
+        //if (!this.block_close)
+        //    this.closeMenu();
     });
 
     //insert before checking position

@@ -23,7 +23,7 @@
     <ProjectReference Include="..\ClassLibrary2\ClassLibrary2.csproj" />
     <ProjectReference Include="..\GatewayRepository\GatewayRepository.csproj" />
     <ProjectReference Include="..\Gateway\Gateway.csproj" />
-    <ProjectReference Include="..\Libs\Gateways.MySensors.Serial\Gateways.MySensors.Serial.csproj" />
+    <ProjectReference Include="..\Libs\Gateways.MySensors\Gateways.MySensors.csproj" />
     <ProjectReference Include="..\Libs\LogicalNodesRepositoryDappers\LogicalNodesRepositoryDappers.csproj" />
     <ProjectReference Include="..\Libs\Nodes.MySensors\Nodes.MySensors.csproj" />
     <ProjectReference Include="..\Libs\Nodes.UITimer\Nodes.UITimer.csproj" />
@@ -35,6 +35,7 @@
     <ProjectReference Include="..\Libs\SerialController\SerialControl.csproj" />
     <ProjectReference Include="..\Libs\SerialControl\SerialControl.csproj" />
     <ProjectReference Include="..\Libs\UITimerNodes\UITimerNodes.csproj" />
+    <ProjectReference Include="..\Libs\Users\Users.csproj" />
     <ProjectReference Include="..\MyNetSensors.GatewayRepository\MyNetSensors.GatewayRepository.csproj" />
     <ProjectReference Include="..\MyNetSensors.Gateway\MyNetSensors.Gateway.csproj" />
     <ProjectReference Include="..\MyNetSensors.NodesLinks\MyNetSensors.NodesLinks.csproj" />

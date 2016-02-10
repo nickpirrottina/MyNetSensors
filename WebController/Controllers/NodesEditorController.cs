@@ -6,23 +6,30 @@ using System.Threading.Tasks;
 using Microsoft.AspNet.Mvc;
 using MyNetSensors.Gateways;
 using LiteGraph;
+using Microsoft.AspNet.Authorization;
+using Microsoft.Extensions.Configuration;
 using MyNetSensors.Nodes;
 using MyNetSensors.Repositories.EF.SQLite;
+using MyNetSensors.Users;
 using MyNetSensors.WebController.Code;
 using Newtonsoft.Json;
 
 
 namespace MyNetSensors.WebController.Controllers
 {
-
+    [Authorize(UserClaims.EditorObserver)]
     public class NodesEditorController : Controller
     {
         const string MAIN_PANEL_ID = "Main";
 
         private NodesEngine engine = SystemController.nodesEngine;
 
+
         public IActionResult Index(bool split)
         {
+            if (engine == null)
+                return View("Error", "Nodes Engine is not started.<br/><br/>   <a href='/Config'>Check settings</a>");
+
             ViewBag.split = split;
             ViewBag.panelId = MAIN_PANEL_ID;
 
@@ -32,7 +39,8 @@ namespace MyNetSensors.WebController.Controllers
         public IActionResult Panel(string id, bool split)
         {
             if (engine == null)
-                return HttpBadRequest();
+                return View("Error", "Nodes Engine is not started.<br/><br/>   <a href='/Config'>Check settings</a>");
+
 
             ViewBag.split = split;
 
@@ -72,6 +80,9 @@ namespace MyNetSensors.WebController.Controllers
 
         public IActionResult Split(string id)
         {
+            if (engine == null)
+                return View("Error", "Nodes Engine is not started.<br/><br/>   <a href='/Config'>Check settings</a>");
+
             if (id == null)
                 ViewBag.route = "";
             else
