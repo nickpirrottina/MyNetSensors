@@ -1,13 +1,18 @@
-﻿using System;
+﻿/*  MyNodes.NET 
+    Copyright (C) 2016 Derwish <derwish.pro@gmail.com>
+    License: http://www.gnu.org/licenses/gpl-3.0.txt  
+*/
+
+using System;
 using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Diagnostics;
 using System.Linq;
 using System.Timers;
 using Dapper;
-using MyNetSensors.Nodes;
+using MyNodes.Nodes;
 
-namespace MyNetSensors.Repositories.Dapper
+namespace MyNodes.Repositories.Dapper
 {
     public class NodesRepositoryDapper : INodesRepository
     {
@@ -30,11 +35,10 @@ namespace MyNetSensors.Repositories.Dapper
 
         public NodesRepositoryDapper(string connectionString)
         {
-            updateDbTimer.Elapsed += UpdateDbTimerEvent;
-
             this.connectionString = connectionString;
             CreateDb();
 
+            updateDbTimer.Elapsed += UpdateDbTimerEvent;
             if (writeInterval > 0)
             {
                 updateDbTimer.Interval = writeInterval;
@@ -66,7 +70,7 @@ namespace MyNetSensors.Repositories.Dapper
                 float messagesPerSec = (float)count / (float)elapsed * 1000;
                 LogInfo($"Writing nodes: {elapsed} ms ({count} inserts, {(int)messagesPerSec} inserts/sec)");
             }
-            catch (Exception ex)
+            catch
             {
 
             }
@@ -120,8 +124,22 @@ namespace MyNetSensors.Repositories.Dapper
 
 
 
+
         public void CreateDb()
         {
+            using (var db = new SqlConnection(connectionString + ";Database= master"))
+            {
+                try
+                {
+                    //db = new SqlConnection("Data Source=.\\sqlexpress; Database= master; Integrated Security=True;");
+                    db.Open();
+                    db.Execute("CREATE DATABASE [MyNodes]");
+                }
+                catch
+                {
+                }
+            }
+
             CreateNodesTable();
             CreateLinksTable();
         }
@@ -174,7 +192,7 @@ namespace MyNetSensors.Repositories.Dapper
 
 
 
-        public string AddNode(Node node)
+        public void AddNode(Node node)
         {
             using (var db = new SqlConnection(connectionString))
             {
@@ -186,8 +204,28 @@ namespace MyNetSensors.Repositories.Dapper
                 SerializedNode serializedNode = new SerializedNode(node);
                 db.Execute(sqlQuery, serializedNode);
             }
-            return node.Id;
         }
+
+
+
+        public void AddNodes(List<Node> nodes)
+        {
+            using (var db = new SqlConnection(connectionString))
+            {
+                db.Open();
+
+                var sqlQuery = "INSERT INTO Nodes (Id, JsonData) "
+                               + "VALUES(@Id, @JsonData)";
+
+                List<SerializedNode> snodes= nodes
+                    .Select(node => new SerializedNode(node))
+                    .ToList();
+
+
+                db.Execute(sqlQuery, snodes);
+            }
+        }
+
 
         public void UpdateNode(Node node)
         {
@@ -260,7 +298,29 @@ namespace MyNetSensors.Repositories.Dapper
             using (var db = new SqlConnection(connectionString))
             {
                 db.Open();
-                db.Query($"DELETE FROM Nodes WHERE Id='{id}'");
+                db.Query($"DELETE FROM Nodes WHERE Id=@id",new {id});
+            }
+        }
+
+        public void RemoveNodes(List<Node> nodes)
+        {
+            foreach (var node in nodes)
+            {
+                Node updNode = updatedNodes.FirstOrDefault(x => x.Id == node.Id);
+                if (updNode != null)
+                    updatedNodes.Remove(updNode);
+            }
+            
+            List<string> listOfIds = nodes.Select(node => node.Id).ToList();
+
+            string listOfIdsJoined = "('" + String.Join("', '", listOfIds.ToArray()) + "')";
+
+            using (var db = new SqlConnection(connectionString))
+            {
+                string q = "DELETE FROM Nodes WHERE Id in " + listOfIdsJoined;
+
+                db.Open();
+                db.Execute(q);
             }
         }
 
@@ -277,9 +337,7 @@ namespace MyNetSensors.Repositories.Dapper
 
 
 
-
-
-        public string AddLink(Link link)
+        public void AddLink(Link link)
         {
             using (var db = new SqlConnection(connectionString))
             {
@@ -290,7 +348,20 @@ namespace MyNetSensors.Repositories.Dapper
 
                 db.Execute(sqlQuery, link);
             }
-            return link.Id;
+        }
+
+
+        public void AddLinks(List<Link> links)
+        {
+            using (var db = new SqlConnection(connectionString))
+            {
+                db.Open();
+
+                var sqlQuery = "INSERT INTO Links (Id, InputId, OutputId, PanelId) "
+                               + "VALUES(@Id, @InputId, @OutputId, @PanelId)";
+
+                db.Execute(sqlQuery, links);
+            }
         }
 
 
@@ -325,6 +396,15 @@ namespace MyNetSensors.Repositories.Dapper
             {
                 db.Open();
                 db.Query($"DELETE FROM Links WHERE Id='{id}'");
+            }
+        }
+
+        public void RemoveLinks(List<Link> links)
+        {
+            using (var db = new SqlConnection(connectionString))
+            {
+                db.Open();
+                db.Execute($"DELETE FROM Links WHERE Id=@Id", links);
             }
         }
 

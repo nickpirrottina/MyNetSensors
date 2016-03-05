@@ -1,5 +1,5 @@
-﻿/*  MyNetSensors 
-    Copyright (C) 2015 Derwish <derwish.pro@gmail.com>
+﻿/*  MyNodes.NET 
+    Copyright (C) 2016 Derwish <derwish.pro@gmail.com>
     License: http://www.gnu.org/licenses/gpl-3.0.txt  
 */
 
@@ -7,7 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace MyNetSensors.Nodes
+namespace MyNodes.Nodes
 {
     public delegate void NodeEventHandler(Node node);
     public delegate void NodeUpdateEventHandler(Node node, bool writeNodeToDb);
@@ -23,7 +23,7 @@ namespace MyNetSensors.Nodes
     {
         public string Id { get; set; }
         public string PanelId { get; set; }
-        public string Title { get; set; }
+        public string Category { get; set; }
         public string Type { get; set; }
         public Position Position { get; set; }
         public Size Size { get; set; }
@@ -33,9 +33,9 @@ namespace MyNetSensors.Nodes
 
         protected NodesEngine engine;
 
-        protected NodeOptions options=new NodeOptions();
+        protected NodeOptions options = new NodeOptions();
 
-        public Dictionary<string, NodeSetting> Settings { get; set; } = new Dictionary<string, NodeSetting>();
+        public Dictionary<string, NodeSetting> Settings { get; set; }
 
 
         public string PanelName
@@ -49,36 +49,18 @@ namespace MyNetSensors.Nodes
             }
         }
 
-        public Node(int inputsCount, int outputsCount)
+        public Node(string category, string type)
         {
             Id = Guid.NewGuid().ToString();
 
+            Type = type;
+            Category = category;
+
             Outputs = new List<Output>();
-            for (int i = 0; i < outputsCount; i++)
-            {
-                if (outputsCount == 1)
-                    AddOutput(new Output { Name = "Out" });
-                else
-                    AddOutput(new Output { Name = $"Out {i + 1}" });
-            }
-
             Inputs = new List<Input>();
-            for (int i = 0; i < inputsCount; i++)
-            {
-                if (inputsCount == 1)
-                    AddInput(new Input { Name = "In" });
-                else
-                    AddInput(new Input { Name = $"In {i + 1}" });
-            }
+            Settings = new Dictionary<string, NodeSetting>();
 
-            PanelId = "Main";
-        }
 
-        public Node()
-        {
-            Id = Guid.NewGuid().ToString();
-            Inputs = new List<Input>();
-            Outputs = new List<Output>();
             PanelId = "Main";
         }
 
@@ -86,12 +68,12 @@ namespace MyNetSensors.Nodes
 
         public void LogInfo(string message)
         {
-            engine?.LogNodesInfo($"{PanelName}: {Title}: {message}");
+            engine?.LogNodesInfo($"{PanelName}: {Type}: {message}");
         }
 
         public void LogError(string message)
         {
-            engine?.LogNodesError($"{PanelName}: {Title}: {message}");
+            engine?.LogNodesError($"{PanelName}: {Type}: {message}");
         }
 
         public void LogIncorrectInputValueError(Input input)
@@ -99,8 +81,8 @@ namespace MyNetSensors.Nodes
             LogError($"Incorrect value in [{input.Name}]: [{input.Value}]");
         }
 
-        public abstract void Loop();
-        public abstract void OnInputChange(Input input);
+        public virtual void Loop() { }
+        public virtual void OnInputChange(Input input) { }
 
         public virtual void OnOutputChange(Output output)
         {
@@ -143,9 +125,14 @@ namespace MyNetSensors.Nodes
             return true;
         }
 
-        public void UpdateMe()
+        public void UpdateMeOnDashboard()
         {
-            engine?.UpdateNode(this);
+            engine?.UpdateNodeOnDashboard(this);
+        }
+
+        public void UpdateMeInEditor()
+        {
+            engine?.UpdateNodeInEditor(this);
         }
 
         public void UpdateMeInDb()
@@ -154,7 +141,7 @@ namespace MyNetSensors.Nodes
         }
 
 
-        public virtual void AddInput(Input input)
+        public void AddInput(Input input)
         {
             Inputs.Add(input);
 
@@ -162,13 +149,110 @@ namespace MyNetSensors.Nodes
                 input.OnInputChange += engine.OnInputChange;
         }
 
-        public virtual void AddOutput(Output output)
+        public void AddOutput(Output output)
         {
             Outputs.Add(output);
 
             if (engine != null)
                 output.OnOutputChange += engine.OnOutputChange;
         }
+
+        public void AddInput(string name, DataType type = DataType.Text, bool isOptional = false)
+        {
+            if (name == null)
+            {
+                name = !Inputs.Any() ? "In" : "In " + (Inputs.Count + 1);
+                if (Inputs.Count == 1 && Inputs[0].Name == "In")
+                    Inputs[0].Name = "In 1";
+            }
+
+
+
+            AddInput(new Input(name, type, isOptional));
+        }
+
+        public void AddOutput(string name, DataType type = DataType.Text)
+        {
+            if (name == null)
+            {
+                name = !Outputs.Any() ? "Out" : "Out " + (Outputs.Count + 1);
+                if (Outputs.Count == 1 && Outputs[0].Name == "Out")
+                    Outputs[0].Name = "Out 1";
+            }
+
+            AddOutput(new Output(name, type));
+        }
+
+        public void AddInput(DataType type = DataType.Text, bool isOptional = false)
+        {
+            AddInput(null, type, isOptional);
+        }
+
+        public void AddOutput(DataType type = DataType.Text)
+        {
+            AddOutput(null, type);
+        }
+
+
+        public void RemoveInput(Input input)
+        {
+            if (input == null || !Inputs.Contains(input))
+            {
+                LogError("Can`t remove input. Does not exist.");
+                return;
+            }
+
+            var link = engine.GetLinkForInput(input);
+            if (link != null)
+                engine.RemoveLink(link,true);
+
+            Inputs.Remove(input);
+        }
+
+        public void RemoveOutput(Output output)
+        {
+            if (output == null || !Outputs.Contains(output))
+            {
+                LogError("Can`t remove output. Does not exist.");
+                return;
+            }
+
+            var links = engine.GetLinksForOutput(output);
+
+            engine.RemoveLinks(links,true);
+
+
+            Outputs.Remove(output);
+        }
+
+
+        public void RemoveOutput(string name)
+        {
+            Output output = Outputs.FirstOrDefault(x => x.Name == name);
+            RemoveOutput(output);
+        }
+
+
+        public void RemoveInput(string name)
+        {
+            Input input = Inputs.FirstOrDefault(x => x.Name == name);
+            RemoveInput(input);
+        }
+
+
+        public Output GetOutput(string name)
+        {
+            Output output = Outputs.FirstOrDefault(x => x.Name == name);
+            return output;
+        }
+
+
+        public Input GetInput(string name)
+        {
+            Input input = Inputs.FirstOrDefault(x => x.Name == name);
+            return input;
+        }
+
 
         public void ShowActivity()
         {
@@ -224,7 +308,7 @@ namespace MyNetSensors.Nodes
                 Settings[d.Key].Value = d.Value;
             }
 
-            UpdateMe();
+            UpdateMeInEditor();
             UpdateMeInDb();
 
 
@@ -248,8 +332,8 @@ namespace MyNetSensors.Nodes
                     'Assembly': '" + assembly + @"'
                 };
             }
-            " + className + @".title = '" + this.Title + @"';
-            LiteGraph.registerNodeType('" + this.Type + "', " + className + @");
+            " + className + @".title = '" + this.Type + @"';
+            LiteGraph.registerNodeType('" + this.Category + "/" + this.Type + "', " + className + @");
 
             ";
         }
@@ -257,6 +341,61 @@ namespace MyNetSensors.Nodes
         public virtual string GetNodeDescription()
         {
             return "This node does not have a description.";
+        }
+
+        public NodeOptions GetNodeOptions()
+        {
+            return options;
+        }
+
+
+
+        public void AddNodeData(string data, int? maxDbRecords = null)
+        {
+            engine?.dataDb?.AddNodeData(new NodeData(Id, data), maxDbRecords);
+        }
+
+        public int AddNodeDataImmediately(string data, int? maxDbRecords = null)
+        {
+            if (engine == null)
+                return -1;
+
+            return engine.dataDb.AddNodeDataImmediately(new NodeData(Id, data), maxDbRecords);
+        }
+
+        public void UpdateNodeData(NodeData nodeData)
+        {
+            engine?.dataDb?.UpdateNodeData(nodeData);
+        }
+
+        public void UpdateNodeDataImmediately(NodeData nodeData)
+        {
+            engine?.dataDb?.UpdateNodeDataImmediately(nodeData);
+        }
+
+
+        public List<NodeData> GetAllNodeData()
+        {
+            return engine?
+                .dataDb?
+                .GetAllNodeDataForNode(Id)?
+                .OrderBy(x=>x.DateTime)
+                .ToList();
+        }
+
+        public NodeData GetNodeData(int id)
+        {
+            return engine?.dataDb?.GetNodeData(id);
+        }
+
+        public void RemoveAllNodeData()
+        {
+            engine?.dataDb?.RemoveAllNodeDataForNode(Id);
+        }
+
+        public void RemoveNodeData(int id)
+        {
+            engine?.dataDb?.RemoveNodeData(id);
         }
     }
 

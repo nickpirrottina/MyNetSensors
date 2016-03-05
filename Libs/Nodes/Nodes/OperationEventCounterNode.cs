@@ -1,35 +1,20 @@
-﻿//planer-pro copyright 2015 GPL - license.
+﻿/*  MyNodes.NET 
+    Copyright (C) 2016 Derwish <derwish.pro@gmail.com>
+    License: http://www.gnu.org/licenses/gpl-3.0.txt  
+*/
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace MyNetSensors.Nodes
+namespace MyNodes.Nodes
 {
-
     public class OperationEventCounterNode : Node
     {
         public int Count { get; set; }
 
-        public OperationEventCounterNode() : base(2, 1)
+        public OperationEventCounterNode() : base("Operation", "Event Counter")
         {
-            this.Title = "Event Counter";
-            this.Type = "Operation/Event Counter";
-
-            Inputs[0].Name = "Value";
-            Inputs[1].Name = "Reset";
-
-            Inputs[0].Type = DataType.Text;
-            Inputs[1].Type = DataType.Logical;
-            Outputs[0].Type = DataType.Number;
+            AddInput("Value", DataType.Text);
+            AddInput("Reset", DataType.Logical, true);
+            AddOutput("Out", DataType.Number);
         }
-
-        public override void Loop()
-        {
-        }
-
 
         public override void OnInputChange(Input input)
         {
@@ -43,6 +28,12 @@ namespace MyNetSensors.Nodes
 
             Outputs[0].Value = Count.ToString();
             UpdateMeInDb();
+        }
+
+        public override string GetNodeDescription()
+        {
+            return "This node counts how many events occurred at the \"Value\" input. <br/>" +
+                   "Any incoming value, including null, will be taken.";
         }
     }
 }

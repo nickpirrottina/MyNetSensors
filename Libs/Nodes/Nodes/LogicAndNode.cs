@@ -1,47 +1,36 @@
-﻿/*  MyNetSensors 
-    Copyright (C) 2015 Derwish <derwish.pro@gmail.com>
+﻿/*  MyNodes.NET 
+    Copyright (C) 2016 Derwish <derwish.pro@gmail.com>
     License: http://www.gnu.org/licenses/gpl-3.0.txt  
 */
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace MyNetSensors.Nodes
+namespace MyNodes.Nodes
 {
     public class LogicAndNode : Node
     {
-
-        public LogicAndNode() : base(2, 1)
+        public LogicAndNode() : base("Logic", "AND")
         {
-            this.Title = "AND";
-            this.Type = "Logic/AND";
+            AddInput(DataType.Logical);
+            AddInput(DataType.Logical);
+            AddOutput(DataType.Logical);
 
-            Inputs[0].Type = DataType.Logical;
-            Inputs[1].Type = DataType.Logical;
-            Outputs[0].Type = DataType.Logical;
+            options.ResetOutputsIfAnyInputIsNull = true;
         }
 
-        public override void Loop()
-        {
-        }
 
         public override void OnInputChange(Input input)
         {
-            if (Inputs.Any(i => i.Value == null))
-            {
-                ResetOutputs();
-                return;
-            }
-
-            string result = "0";
+            var result = "0";
 
             if (Inputs[0].Value == "1" && Inputs[1].Value == "1")
                 result = "1";
-            
+
             Outputs[0].Value = result;
+        }
+
+        public override string GetNodeDescription()
+        {
+            return "This node performs a logical \"AND\" operation. <br/>" +
+                   "It accepts only logical values (\"0\"/\"1\").";
         }
     }
 }

@@ -1,5 +1,5 @@
-﻿/*  MyNetSensors 
-    Copyright (C) 2015 Derwish <derwish.pro@gmail.com>
+﻿/*  MyNodes.NET 
+    Copyright (C) 2016 Derwish <derwish.pro@gmail.com>
     License: http://www.gnu.org/licenses/gpl-3.0.txt  
 */
 
@@ -44,15 +44,17 @@ namespace LiteGraph
     public class Input
     {
         public string name { get; set; }
-        public string type { get; set; }
+        public int type { get; set; }
         public string link { get; set; }
+        public bool isOptional { get; set; }
     }
 
     public class Output
     {
         public string name { get; set; }
-        public string type { get; set; }
+        public int type { get; set; }
         public string[] links { get; set; }
+        public bool isOptional { get; set; }
 
     }
 

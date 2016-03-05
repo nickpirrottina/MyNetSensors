@@ -1,41 +1,30 @@
-﻿/*  MyNetSensors 
-    Copyright (C) 2015 Derwish <derwish.pro@gmail.com>
+﻿/*  MyNodes.NET 
+    Copyright (C) 2016 Derwish <derwish.pro@gmail.com>
     License: http://www.gnu.org/licenses/gpl-3.0.txt  
 */
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace MyNetSensors.Nodes
+namespace MyNodes.Nodes
 {
     public class LogicNotNode : Node
     {
-
-        public LogicNotNode() : base(1, 1)
+        public LogicNotNode() : base("Logic", "NOT")
         {
-            this.Title = "NOT";
-            this.Type = "Logic/NOT";
+            AddInput( DataType.Logical);
+            AddOutput( DataType.Logical);
 
-            Inputs[0].Type = DataType.Logical;
-            Outputs[0].Type = DataType.Logical;
+            options.ResetOutputsIfAnyInputIsNull = true;
         }
 
-        public override void Loop()
-        {
-        }
 
         public override void OnInputChange(Input input)
         {
-            if (Inputs.Any(i => i.Value == null))
-            {
-                ResetOutputs();
-                return;
-            }
-
             Outputs[0].Value = Inputs[0].Value == "0" ? "1" : "0";
+        }
+
+        public override string GetNodeDescription()
+        {
+            return "This node performs a logical \"NOT\" operation.<br/>" +
+                   "It accepts only logical values (\"0\"/\"1\").";
         }
     }
 }

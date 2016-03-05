@@ -1,33 +1,30 @@
-﻿/*  MyNetSensors 
-    Copyright (C) 2015 Derwish <derwish.pro@gmail.com>
+﻿/*  MyNodes.NET 
+    Copyright (C) 2016 Derwish <derwish.pro@gmail.com>
     License: http://www.gnu.org/licenses/gpl-3.0.txt  
 */
 
-namespace MyNetSensors.Nodes
+namespace MyNodes.Nodes
 {
     public class ConnectionLocalReceiverNode : Node
     {
-
-        public ConnectionLocalReceiverNode() : base(0,1)
+        public ConnectionLocalReceiverNode() : base("Connection", "Local Receiver")
         {
-            this.Title = "Local Receiver";
-            this.Type = "Connection/Local Receiver";
-
-            Settings.Add("Channel",new NodeSetting(NodeSettingType.Number, "Channel","0"));
+            AddOutput();
+            Settings.Add("Channel", new NodeSetting(NodeSettingType.Number, "Channel", "0"));
         }
 
-        public override void Loop()
-        {
-        }
 
-        public override void OnInputChange(Input input)
-        {
-        }
-        
         public void ReceiveValue(string value, string transmitPanelName)
         {
-            LogInfo($"Received from [{transmitPanelName}: Transmitter]: [{value??"NULL"}]");
+            LogInfo($"Received from [{transmitPanelName}: Transmitter]: [{value ?? "NULL"}]");
             Outputs[0].Value = value;
+        }
+
+        public override string GetNodeDescription()
+        {
+            return "This node works in conjunction with Local Trasmitter, " +
+                   "and provides a connection of nodes without a graphical wires. <br/>" +
+                   "Read the description to Local Trasmitter to understand how it works.";
         }
     }
 }

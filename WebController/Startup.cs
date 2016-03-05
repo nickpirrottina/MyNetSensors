@@ -15,11 +15,12 @@ using Microsoft.Data.Entity.Query.ExpressionTranslators.Internal;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using MyNetSensors.Repositories.EF.SQLite;
-using MyNetSensors.Users;
-using MyNetSensors.WebController.Code;
+using Microsoft.Data.Entity.Infrastructure;
+using MyNodes.Repositories.EF.SQLite;
+using MyNodes.Users;
+using MyNodes.WebController.Code;
 
-namespace MyNetSensors.WebController
+namespace MyNodes.WebController
 {
     public class Startup
     {
@@ -42,24 +43,18 @@ namespace MyNetSensors.WebController
 
         public void ConfigureServices(IServiceCollection services)
         {
-            //if (Boolean.Parse(Configuration["DataBase:Enable"])
-            //    && Boolean.Parse(Configuration["DataBase:UseInternalDb"]))
-            //{
-                services.AddEntityFramework()
-                    .AddSqlite()
-                    .AddDbContext<NodesDbContext>(options =>
-                        options.UseSqlite("Data Source=Nodes.sqlite"))
-                    .AddDbContext<NodesStatesHistoryDbContext>(options =>
-                        options.UseSqlite("Data Source=NodesStatesHistory.sqlite"))
-                    .AddDbContext<MySensorsNodesDbContext>(options =>
-                        options.UseSqlite("Data Source=MySensorsNodes.sqlite"))
-                    .AddDbContext<MySensorsMessagesDbContext>(options =>
-                        options.UseSqlite("Data Source=MySensorsMessages.sqlite"))
-                    .AddDbContext<UITimerNodesDbContext>(options =>
-                        options.UseSqlite("Data Source=UITimerNodes.sqlite"))
-                    .AddDbContext<UsersDbContext>(options =>
-                        options.UseSqlite("Data Source=Users.sqlite"));
-            //}
+            services.AddEntityFramework()
+                .AddSqlite()
+                .AddDbContext<NodesDbContext>(options =>
+                    options.UseSqlite("Data Source=Nodes.sqlite"))
+                .AddDbContext<NodesDataDbContext>(options =>
+                    options.UseSqlite("Data Source=NodesData.sqlite"))
+                .AddDbContext<MySensorsNodesDbContext>(options =>
+                    options.UseSqlite("Data Source=MySensorsNodes.sqlite"))
+                .AddDbContext<MySensorsMessagesDbContext>(options =>
+                    options.UseSqlite("Data Source=MySensorsMessages.sqlite"))
+                .AddDbContext<UsersDbContext>(options =>
+                    options.UseSqlite("Data Source=Users.sqlite"));
 
             services.AddMvc();
 
@@ -183,8 +178,10 @@ namespace MyNetSensors.WebController
                 });
 
 
-                NodesEngineSignalRServer.Start(connectionManager);
+                DashboardSignalRServer.Start(connectionManager);
+                NodeEditorSignalRServer.Start(connectionManager);
                 MySensorsSignalRServer.Start(connectionManager);
+                LogsSignalRServer.Start(connectionManager);
             }
 
             SystemController.Start(Configuration, serviceProvider);

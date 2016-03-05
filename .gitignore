@@ -188,6 +188,7 @@ UpgradeLog*.htm
 # SQL Server files
 *.mdf
 *.ldf
+*.sqlite
 
 # Business Intelligence projects
 *.rdl.data
@@ -210,9 +211,8 @@ FakesAssemblies/
 GeneratedArtifacts/
 _Pvt_Extensions/
 ModelManifest.xml
-/WebController/UITimerNodes.sqlite
-/WebController/NodesStatesHistory.sqlite
-/WebController/Nodes.sqlite
-/WebController/MySensorsNodes.sqlite
 /WebController/MySensorsMessages.sqlite
-/WebController/Application.sqlite
+/WebController/MySensorsNodes.sqlite
+/WebController/Nodes.sqlite
+/WebController/Users.sqlite
+/WebController/NodesData.sqlite

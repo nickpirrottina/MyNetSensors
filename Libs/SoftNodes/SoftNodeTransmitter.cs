@@ -1,8 +1,13 @@
-﻿using System;
+﻿/*  MyNodes.NET 
+    Copyright (C) 2016 Derwish <derwish.pro@gmail.com>
+    License: http://www.gnu.org/licenses/gpl-3.0.txt  
+*/
+
+using System;
 using System.Collections.Generic;
 using System.Net.Http;
 
-namespace MyNetSensors.SoftNodes
+namespace MyNodes.SoftNodes
 {
     public delegate void LogMessageEventHandler(string message);
 
@@ -28,7 +33,7 @@ namespace MyNetSensors.SoftNodes
             {
                 using (var client = new HttpClient())
                 {
-                    string url = serverAddress + "/NodesEditorApi/ReceiverSetValue/";
+                    string url = serverAddress + "/NodeEditorApi/ReceiverSetValue/";
 
                     var content = new FormUrlEncodedContent(new[]
                     {

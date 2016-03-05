@@ -1,4 +1,9 @@
-﻿using System;
+﻿/*  MyNodes.NET 
+    Copyright (C) 2016 Derwish <derwish.pro@gmail.com>
+    License: http://www.gnu.org/licenses/gpl-3.0.txt  
+*/
+
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -7,13 +12,13 @@ using Microsoft.AspNet.Authorization;
 using Microsoft.AspNet.Mvc;
 using Microsoft.AspNet.Mvc.Rendering;
 using Microsoft.Extensions.Configuration;
-using MyNetSensors.Users;
-using MyNetSensors.WebController.Code;
-using MyNetSensors.WebController.ViewModels.Config;
+using MyNodes.Users;
+using MyNodes.WebController.Code;
+using MyNodes.WebController.ViewModels.Config;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace MyNetSensors.WebController.Controllers
+namespace MyNodes.WebController.Controllers
 {
     [Authorize(UserClaims.ConfigObserver)]
     public class ConfigController : Controller
@@ -250,6 +255,137 @@ namespace MyNetSensors.WebController.Controllers
         }
 
 
+
+        [HttpGet]
+        public IActionResult Server()
+        {
+            return View(SystemController.webServerConfig);
+        }
+
+
+
+        [Authorize(UserClaims.ConfigEditor)]
+
+        [HttpPost]
+        public IActionResult Server(WebServerConfig model)
+        {
+            if (model != null)
+            {
+                SystemController.webServerConfig = model;
+
+                dynamic json = ReadConfig();
+                json.WebServer.Address = model.Address;
+                WriteConfig(json);
+
+                json= JObject.Parse(System.IO.File.ReadAllText("project.json"));
+                json.commands.web = $"Microsoft.AspNet.Server.Kestrel --server.urls {model.Address}";
+                System.IO.File.WriteAllText("project.json", json.ToString());
+
+                configuration.Reload();
+            }
+
+            return RedirectToAction("Index");
+        }
+
+
+        [HttpGet]
+        public IActionResult NodeEditor()
+        {
+            return View(SystemController.nodeEditorConfig);
+        }
+
+
+        [Authorize(UserClaims.ConfigEditor)]
+
+        [HttpPost]
+        public IActionResult NodeEditor(NodeEditorConfig model)
+        {
+            dynamic json = ReadConfig();
+            json.NodeEditor = JObject.FromObject(model);
+            WriteConfig(json);
+            configuration.Reload();
+
+            SystemController.nodeEditorConfig = model;
+
+            return RedirectToAction("Index");
+        }
+
+
+        [HttpGet]
+        public IActionResult NodesEngine()
+        {
+            return View(SystemController.nodesEngineConfig);
+        }
+
+
+        [Authorize(UserClaims.ConfigEditor)]
+
+        [HttpPost]
+        public IActionResult NodesEngine(NodesEngineConfig model)
+        {
+            model.Enable = SystemController.nodesEngine.IsStarted();
+
+            if (model.UpdateInterval < 0)
+                model.UpdateInterval = 0;
+
+            dynamic json = ReadConfig();
+            json.NodesEngine = JObject.FromObject(model);
+            WriteConfig(json);
+            configuration.Reload();
+
+            SystemController.nodesEngineConfig = model;
+            SystemController.nodesEngine.SetUpdateInterval(model.UpdateInterval);
+
+            return RedirectToAction("Index");
+        }
+
+
+        [HttpGet]
+        public IActionResult Console()
+        {
+            return View(SystemController.logs.consoleConfig);
+        }
+
+
+        [Authorize(UserClaims.ConfigEditor)]
+
+        [HttpPost]
+        public IActionResult Console(ConsoleConfig model)
+        {
+
+            dynamic json = ReadConfig();
+            json.Console = JObject.FromObject(model);
+            WriteConfig(json);
+            configuration.Reload();
+
+            SystemController.logs.consoleConfig = model;
+
+            return RedirectToAction("Index");
+        }
+
+
+        [HttpGet]
+        public IActionResult Logs()
+        {
+            return View(SystemController.logs.config);
+        }
+
+
+        [Authorize(UserClaims.ConfigEditor)]
+
+        [HttpPost]
+        public IActionResult Logs(LogsConfig model)
+        {
+
+            dynamic json = ReadConfig();
+            json.Logs = JObject.FromObject(model);
+            WriteConfig(json);
+            configuration.Reload();
+
+            SystemController.logs.config = model;
+
+            return RedirectToAction("Index");
+        }
     }
 
 }

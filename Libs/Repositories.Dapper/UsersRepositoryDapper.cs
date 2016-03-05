@@ -1,13 +1,18 @@
-﻿using System;
+﻿/*  MyNodes.NET 
+    Copyright (C) 2016 Derwish <derwish.pro@gmail.com>
+    License: http://www.gnu.org/licenses/gpl-3.0.txt  
+*/
+
+using System;
 using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Dapper;
-using MyNetSensors.Users;
+using MyNodes.Users;
 
-namespace MyNetSensors.Repositories.Dapper
+namespace MyNodes.Repositories.Dapper
 {
     public class UsersRepositoryDapper : IUsersRepository
     {
@@ -28,7 +33,7 @@ namespace MyNetSensors.Repositories.Dapper
                 try
                 {
                     db.Open();
-                    db.Execute("CREATE DATABASE [Users]");
+                    db.Execute("CREATE DATABASE [MyNodes]");
                 }
                 catch
                 {
@@ -51,7 +56,7 @@ namespace MyNetSensors.Repositories.Dapper
 	                    [ClaimsJson] [nvarchar](max) NULL
                         ) ON [PRIMARY] ");
                 }
-                catch (Exception ex)
+                catch
                 {
                 }
             }

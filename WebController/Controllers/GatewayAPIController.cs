@@ -1,5 +1,5 @@
-﻿/*  MyNetSensors 
-    Copyright (C) 2015 Derwish <derwish.pro@gmail.com>
+﻿/*  MyNodes.NET 
+    Copyright (C) 2016 Derwish <derwish.pro@gmail.com>
     License: http://www.gnu.org/licenses/gpl-3.0.txt  
 */
 
@@ -9,12 +9,12 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNet.Authorization;
 using Microsoft.AspNet.Mvc;
-using MyNetSensors.Gateways;
-using MyNetSensors.Gateways.MySensors;
-using MyNetSensors.Users;
-using MyNetSensors.WebController.Code;
+using MyNodes.Gateways;
+using MyNodes.Gateways.MySensors;
+using MyNodes.Users;
+using MyNodes.WebController.Code;
 
-namespace MyNetSensors.WebController.Controllers
+namespace MyNodes.WebController.Controllers
 {
 
     public class GatewayAPIController : Controller
@@ -117,7 +117,7 @@ namespace MyNetSensors.WebController.Controllers
 
         [Authorize(UserClaims.EditorEditor)]
 
-        public async Task<bool> RemoveAllNodes()
+        public bool RemoveAllNodes()
         {
             gateway.RemoveAllNodes();
             return true;

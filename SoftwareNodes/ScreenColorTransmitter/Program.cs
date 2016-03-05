@@ -1,5 +1,5 @@
-﻿/*  MyNetSensors 
-    Copyright (C) 2015-2016 Derwish <derwish.pro@gmail.com>
+﻿/*  MyNodes.NET 
+    Copyright (C) 2016 Derwish <derwish.pro@gmail.com>
     License: http://www.gnu.org/licenses/gpl-3.0.txt  
 */
 
@@ -16,7 +16,7 @@ using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using MyNetSensors.SoftNodes;
+using MyNodes.SoftNodes;
 
 
 namespace ScreenColor

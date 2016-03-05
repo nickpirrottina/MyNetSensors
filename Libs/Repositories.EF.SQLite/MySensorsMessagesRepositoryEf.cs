@@ -1,5 +1,5 @@
-﻿/*  MyNetSensors 
-    Copyright (C) 2015 Derwish <derwish.pro@gmail.com>
+﻿/*  MyNodes.NET 
+    Copyright (C) 2016 Derwish <derwish.pro@gmail.com>
     License: http://www.gnu.org/licenses/gpl-3.0.txt  
 */
 
@@ -10,10 +10,10 @@ using System.Diagnostics;
 using System.Linq;
 using System.Timers;
 using Microsoft.Data.Entity;
-using MyNetSensors.Gateways;
-using MyNetSensors.Gateways.MySensors;
+using MyNodes.Gateways;
+using MyNodes.Gateways.MySensors;
 
-namespace MyNetSensors.Repositories.EF.SQLite
+namespace MyNodes.Repositories.EF.SQLite
 {
 
 
@@ -21,7 +21,6 @@ namespace MyNetSensors.Repositories.EF.SQLite
 
     public class MySensorsMessagesRepositoryEf : IMySensorsMessagesRepository
     {
-        private string connectionString;
 
         //if writeInterval==0, every message will be instantly writing to DB
         //and this will increase the reliability of the system, 
@@ -135,7 +134,7 @@ namespace MyNetSensors.Repositories.EF.SQLite
                 float messagesPerSec = (float) messages/(float) elapsed*1000;
                 LogInfo($"Writing gateway messages: {elapsed} ms ({messages} inserts, {(int) messagesPerSec} inserts/sec)");
             }
-            catch(Exception ex)
+            catch
             {
                 
             }

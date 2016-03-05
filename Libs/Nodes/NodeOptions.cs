@@ -4,11 +4,12 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace MyNetSensors.Nodes
+namespace MyNodes.Nodes
 {
     public class NodeOptions
     {
         public bool LogOutputChanges = true;
-
+        public bool ProtectedAccess = false;
+        public bool ResetOutputsIfAnyInputIsNull=false;
     }
 }

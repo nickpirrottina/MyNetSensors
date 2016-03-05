@@ -1,42 +1,31 @@
 ﻿//planer-pro copyright 2015 GPL - license.
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace MyNetSensors.Nodes
+namespace MyNodes.Nodes
 {
-
     public class MathRoundNode : Node
     {
-
-        public MathRoundNode() : base(1, 1)
+        public MathRoundNode() : base("Math", "Round")
         {
-            this.Title = "Round";
-            this.Type = "Math/Round";
+            AddInput(DataType.Number);
+            AddOutput(DataType.Number);
 
-            Inputs[0].Type = DataType.Number;
-            Outputs[0].Type = DataType.Number;
+            options.ResetOutputsIfAnyInputIsNull = true;
         }
 
-        public override void Loop()
-        {
-        }
 
         public override void OnInputChange(Input input)
         {
-            if (Inputs.Any(i => i.Value == null))
-            {
-                ResetOutputs();
-                return;
-            }
-
-            Double a = Double.Parse(Inputs[0].Value);
-            int b = (int)Math.Round(a);
+            var a = double.Parse(Inputs[0].Value);
+            var b = (int) Math.Round(a);
 
             Outputs[0].Value = b.ToString();
+        }
+
+        public override string GetNodeDescription()
+        {
+            return "This node rounds a number to the nearest integer.";
         }
     }
 }

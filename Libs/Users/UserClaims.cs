@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace MyNetSensors.Users
+namespace MyNodes.Users
 {
     public static class UserClaims
     {
@@ -12,6 +12,7 @@ namespace MyNetSensors.Users
         public const string DashboardEditor = "DashboardEditor";
         public const string EditorObserver = "EditorObserver";
         public const string EditorEditor = "EditorEditor";
+        public const string EditorProtectedAccess = "EditorProtectedAccess";
         public const string HardwareObserver = "HardwareObserver";
         public const string LogsObserver = "LogsObserver";
         public const string LogsEditor = "LogsEditor";

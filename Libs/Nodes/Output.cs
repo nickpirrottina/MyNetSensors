@@ -1,6 +1,11 @@
-﻿using System;
+﻿/*  MyNodes.NET 
+    Copyright (C) 2016 Derwish <derwish.pro@gmail.com>
+    License: http://www.gnu.org/licenses/gpl-3.0.txt  
+*/
 
-namespace MyNetSensors.Nodes
+using System;
+
+namespace MyNodes.Nodes
 {
     public delegate void OutputEventHandler(Output output);
     public class Output
@@ -27,6 +32,13 @@ namespace MyNetSensors.Nodes
         {
             Id = Guid.NewGuid().ToString();
             Type = DataType.Text;
+        }
+
+        public Output(string name, DataType type = DataType.Text)
+        {
+            Id = Guid.NewGuid().ToString();
+            Name = name;
+            Type = type;
         }
     }
 }

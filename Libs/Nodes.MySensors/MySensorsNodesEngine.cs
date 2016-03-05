@@ -1,10 +1,15 @@
-﻿using System.Collections.Generic;
-using System.Linq;
-using MyNetSensors.Gateways;
-using MyNetSensors.Gateways.MySensors;
-using Node = MyNetSensors.Nodes.Node;
+﻿/*  MyNodes.NET 
+    Copyright (C) 2016 Derwish <derwish.pro@gmail.com>
+    License: http://www.gnu.org/licenses/gpl-3.0.txt  
+*/
 
-namespace MyNetSensors.Nodes
+using System.Collections.Generic;
+using System.Linq;
+using MyNodes.Gateways;
+using MyNodes.Gateways.MySensors;
+using Node = MyNodes.Nodes.Node;
+
+namespace MyNodes.Nodes
 {
     public class MySensorsNodesEngine
     {
@@ -43,9 +48,9 @@ namespace MyNetSensors.Nodes
             if (!(node is MySensorsNode))
                 return;
 
-            MySensorsNode n = (MySensorsNode) node;
+            MySensorsNode n = (MySensorsNode)node;
 
-            if (gateway.GetNode(n.nodeId)!=null)
+            if (gateway.GetNode(n.nodeId) != null)
                 gateway.RemoveNode(n.nodeId);
         }
 
@@ -65,7 +70,11 @@ namespace MyNetSensors.Nodes
 
         private void OnGatewayRemoveAllNodes()
         {
-            List<MySensorsNode> nodes = engine.GetNodes().OfType<MySensorsNode>().ToList();
+            List<MySensorsNode> nodes;
+
+            lock (engine.nodesLock)
+                nodes = engine.GetNodes().OfType<MySensorsNode>().ToList();
+
             foreach (var node in nodes)
             {
                 engine.RemoveNode(node);
@@ -83,8 +92,8 @@ namespace MyNetSensors.Nodes
             }
             else
             {
-                oldNode.Title = node.GetSimpleName2();
-                engine.UpdateNode(oldNode);
+                oldNode.Settings["Name"].Value = node.GetSimpleName2();
+                engine.UpdateNodeInEditor(oldNode);
                 engine.UpdateNodeInDb(oldNode);
             }
         }
@@ -96,7 +105,7 @@ namespace MyNetSensors.Nodes
             {
                 MySensorsNode node = GetMySensorsNode(sensor.nodeId);
                 node.AddInputAndOutput(sensor);
-                engine.UpdateNode(node);
+                engine.UpdateNodeInEditor(node);
                 engine.UpdateNodeInDb(node);
             }
             else
@@ -111,9 +120,10 @@ namespace MyNetSensors.Nodes
 
         public MySensorsNode GetMySensorsNode(int nodeId)
         {
-            return engine.GetNodes()
-                .OfType<MySensorsNode>()
-                .FirstOrDefault(node => node.nodeId == nodeId);
+            lock (engine.nodesLock)
+                return engine.GetNodes()
+                    .OfType<MySensorsNode>()
+                    .FirstOrDefault(node => node.nodeId == nodeId);
         }
 
         public MySensorsNodeOutput GetMySensorsNodeOutput(int nodeId, int sensorId)

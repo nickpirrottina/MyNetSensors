@@ -1,16 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Microsoft.Data.Entity;
-using Microsoft.Data.Entity.Infrastructure;
-using Microsoft.Data.Entity;
-using Microsoft.Data.Entity.Metadata;
-using MyNetSensors.Gateways;
-using MyNetSensors.Gateways.MySensors;
+﻿using Microsoft.Data.Entity;
+using MyNodes.Gateways.MySensors;
 
-namespace MyNetSensors.Repositories.EF.SQLite
+namespace MyNodes.Repositories.EF.SQLite
 {
     public class MySensorsMessagesDbContext : DbContext
     {

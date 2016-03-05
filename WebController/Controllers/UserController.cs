@@ -1,4 +1,9 @@
-﻿using System;
+﻿/*  MyNodes.NET 
+    Copyright (C) 2016 Derwish <derwish.pro@gmail.com>
+    License: http://www.gnu.org/licenses/gpl-3.0.txt  
+*/
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
@@ -9,11 +14,11 @@ using Microsoft.AspNet.Mvc;
 using Microsoft.AspNet.Mvc.Rendering;
 using Microsoft.Data.Entity;
 using Microsoft.Extensions.Logging;
-using MyNetSensors.Users;
-using MyNetSensors.WebController.Code;
-using MyNetSensors.WebController.ViewModels.User;
+using MyNodes.Users;
+using MyNodes.WebController.Code;
+using MyNodes.WebController.ViewModels.User;
 
-namespace MyNetSensors.WebController.Controllers
+namespace MyNodes.WebController.Controllers
 {
 
 
@@ -237,7 +242,7 @@ namespace MyNetSensors.WebController.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Add(NewUserModel model)
+        public IActionResult Add(NewUserModel model)
         {
             if (db == null)
                 return View("Error", NO_DB_ERROR);
@@ -283,7 +288,7 @@ namespace MyNetSensors.WebController.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(User model)
+        public IActionResult Edit(User model)
         {
             if (db == null)
                 return View("Error", NO_DB_ERROR);
@@ -323,7 +328,7 @@ namespace MyNetSensors.WebController.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Permissions(UserPermissions model,int userId)
+        public IActionResult Permissions(UserPermissions model,int userId)
         {
             if (db == null)
                 return View("Error", NO_DB_ERROR);

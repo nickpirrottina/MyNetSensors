@@ -1,26 +1,34 @@
-﻿using System;
+﻿/*  MyNodes.NET 
+    Copyright (C) 2016 Derwish <derwish.pro@gmail.com>
+    License: http://www.gnu.org/licenses/gpl-3.0.txt  
+*/
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNet.Authorization;
 using Microsoft.AspNet.Mvc;
 using Microsoft.Extensions.Configuration;
-using MyNetSensors.Nodes;
-using MyNetSensors.Users;
-using MyNetSensors.WebController.Code;
+using MyNodes.Nodes;
+using MyNodes.Users;
+using MyNodes.WebController.Code;
 
-namespace MyNetSensors.WebController.Controllers
+namespace MyNodes.WebController.Controllers
 {
     [Authorize(UserClaims.DashboardObserver)]
     public class DashboardController : Controller
     {
         const string MAIN_PANEL_ID = "Main";
+        const string HOME_PANEL_ID = "Home";
 
         private UiNodesEngine engine = SystemController.uiNodesEngine;
 
 
         public IActionResult Index()
         {
+            ViewBag.panelId = HOME_PANEL_ID;
+
             return View();
         }
 
@@ -73,16 +81,20 @@ namespace MyNetSensors.WebController.Controllers
             if (engine == null)
                 return HttpBadRequest();
 
-            UiChartNode chart = engine.GetUINode(id) as UiChartNode;
-            if (chart == null)
+            UiChartNode node = engine.GetUINode(id) as UiChartNode;
+            if (node == null)
                 return new HttpNotFoundResult();
 
             ViewBag.autoscroll = autoscroll;
+
+            if (style == null)
+                style = node.Style;
+
             ViewBag.style = style;
             ViewBag.start = start ?? "0";
             ViewBag.end = end ?? "0";
 
-            return View(chart);
+            return View(node);
         }
     }
 }

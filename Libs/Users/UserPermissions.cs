@@ -1,4 +1,4 @@
-﻿namespace MyNetSensors.Users
+﻿namespace MyNodes.Users
 {
     public class UserPermissions
     {
@@ -6,6 +6,7 @@
         public bool DashboardEditor { get; set; }
         public bool EditorObserver { get; set; }
         public bool EditorEditor { get; set; }
+        public bool EditorProtectedAccess { get; set; }
         public bool HardwareObserver { get; set; }
         public bool LogsObserver { get; set; }
         public bool LogsEditor { get; set; }

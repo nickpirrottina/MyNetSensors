@@ -1,54 +1,38 @@
-﻿//planer-pro copyright 2015 GPL - license.
+﻿/*  MyNodes.NET 
+    Copyright (C) 2016 Derwish <derwish.pro@gmail.com>
+    License: http://www.gnu.org/licenses/gpl-3.0.txt  
+*/
 
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace MyNetSensors.Nodes
+namespace MyNodes.Nodes
 {
-
     public class SystemJsonFileNode : Node
     {
-
-        public SystemJsonFileNode() : base(6, 1)
+        public SystemJsonFileNode() : base("System", "Json File")
         {
-            this.Title = "Json File";
-            this.Type = "System/Json File";
+            AddInput("File Name", DataType.Text);
+            AddInput("Key", DataType.Text);
+            AddInput("Value", DataType.Logical);
+            AddInput("Read", DataType.Logical, true);
+            AddInput("Write", DataType.Logical, true);
+            AddInput("Delete File", DataType.Logical, true);
 
-            Inputs[0].Name = "File Name";
-            Inputs[1].Name = "Key";
-            Inputs[2].Name = "Value";
-            Inputs[3].Name = "Read";
-            Inputs[4].Name = "Write";
-            Inputs[5].Name = "Delete File";
-            Outputs[0].Name = "Value";
-
-            Inputs[0].Type = DataType.Text;
-            Inputs[1].Type = DataType.Text;
-            Inputs[2].Type = DataType.Text;
-            Inputs[3].Type = DataType.Logical;
-            Inputs[4].Type = DataType.Logical;
-            Inputs[5].Type = DataType.Logical;
-            Outputs[0].Type = DataType.Text;
-
+            AddOutput("Value");
+            
             options.LogOutputChanges = false;
+            options.ProtectedAccess = true;
         }
 
-        public override void Loop()
-        {
-        }
 
         public override void OnInputChange(Input input)
         {
             //delete
             if (input == Inputs[5] && input.Value == "1")
             {
-                string fileName = Inputs[0].Value;
+                var fileName = Inputs[0].Value;
                 try
                 {
                     File.Delete(fileName);
@@ -63,21 +47,23 @@ namespace MyNetSensors.Nodes
             //write
             if (input == Inputs[4] && input.Value == "1")
             {
-                string fileName = Inputs[0].Value;
-                string key = Inputs[1].Value;
-                string value = Inputs[2].Value;
-                JObject json=null;
+                var fileName = Inputs[0].Value;
+                var key = Inputs[1].Value;
+                var value = Inputs[2].Value;
+                JObject json = null;
                 try
                 {
-                    string text = File.ReadAllText(fileName);
+                    var text = File.ReadAllText(fileName);
                     json = JObject.Parse(text);
                 }
-                catch { }
+                catch
+                {
+                }
 
                 try
                 {
-                    if (json==null)
-                        json=new JObject();
+                    if (json == null)
+                        json = new JObject();
                     json.Remove(key);
                     json.Add(key, value);
                     File.WriteAllText(fileName, json.ToString());
@@ -91,12 +77,12 @@ namespace MyNetSensors.Nodes
             //read
             if (input == Inputs[3] && input.Value == "1")
             {
-                string fileName = Inputs[0].Value;
-                string key = Inputs[1].Value;
+                var fileName = Inputs[0].Value;
+                var key = Inputs[1].Value;
                 try
                 {
-                    string text = File.ReadAllText(fileName);
-                    JObject json = JObject.Parse(text);
+                    var text = File.ReadAllText(fileName);
+                    var json = JObject.Parse(text);
                     Outputs[0].Value = json.GetValue(key).ToString();
                 }
                 catch (Exception)
@@ -105,6 +91,16 @@ namespace MyNetSensors.Nodes
                     Outputs[0].Value = null;
                 }
             }
+        }
+
+        public override string GetNodeDescription()
+        {
+            return "This node can read and write Json file on the disk. <br/>" +
+                   "Send the file name To the input named File Name. The path can be omitted. <br/>" +
+                   "With logic inputs named Read, Write, Delete File you can perform the requested operation. <br/>" +
+                   "Specify the key that you want to read/write. <br/>" +
+                   "The value that you want to write, send to Value input. <br/>" +
+                   "Read value will be sent to the output.";
         }
     }
 }

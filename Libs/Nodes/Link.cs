@@ -1,6 +1,11 @@
-﻿using System;
+﻿/*  MyNodes.NET 
+    Copyright (C) 2016 Derwish <derwish.pro@gmail.com>
+    License: http://www.gnu.org/licenses/gpl-3.0.txt  
+*/
 
-namespace MyNetSensors.Nodes
+using System;
+
+namespace MyNodes.Nodes
 {
     public class Link
     {

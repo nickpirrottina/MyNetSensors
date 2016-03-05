@@ -1,35 +1,23 @@
-﻿/*  MyNetSensors 
-    Copyright (C) 2015 Derwish <derwish.pro@gmail.com>
+﻿/*  MyNodes.NET 
+    Copyright (C) 2016 Derwish <derwish.pro@gmail.com>
     License: http://www.gnu.org/licenses/gpl-3.0.txt  
 */
 
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace MyNetSensors.Nodes
+namespace MyNodes.Nodes
 {
     public class SystemRunNode : Node
     {
-
-        public SystemRunNode() : base(2, 0)
+        public SystemRunNode() : base("System", "Run")
         {
-            this.Title = "Run";
-            this.Type = "System/Run";
+            AddInput("Command");
+            AddInput("Start", DataType.Logical);
 
-            Inputs[0].Name = "Path";
-            Inputs[1].Name = "Start";
-
-            Inputs[0].Type = DataType.Text;
-            Inputs[1].Type = DataType.Logical;
+            options.ProtectedAccess = true;
         }
 
-        public override void Loop()
-        {
-        }
 
         public override void OnInputChange(Input input)
         {
@@ -37,7 +25,7 @@ namespace MyNetSensors.Nodes
             {
                 try
                 {
-                    String path = Inputs[0].Value;
+                    var path = Inputs[0].Value;
 
                     var proc1 = new ProcessStartInfo();
                     proc1.UseShellExecute = true;
@@ -51,9 +39,14 @@ namespace MyNetSensors.Nodes
                 }
                 catch (Exception)
                 {
-                    LogInfo("Incorrect path");
+                    LogInfo("Incorrect command");
                 }
             }
+        }
+
+        public override string GetNodeDescription()
+        {
+            return "This node can execute any system command in Windows.";
         }
     }
 }

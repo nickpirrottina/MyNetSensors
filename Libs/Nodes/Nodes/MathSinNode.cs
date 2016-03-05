@@ -1,44 +1,34 @@
-﻿/*  MyNetSensors 
-    Copyright (C) 2015 Derwish <derwish.pro@gmail.com>
+﻿/*  MyNodes.NET 
+    Copyright (C) 2016 Derwish <derwish.pro@gmail.com>
     License: http://www.gnu.org/licenses/gpl-3.0.txt  
 */
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace MyNetSensors.Nodes
+namespace MyNodes.Nodes
 {
     public class MathSinNode : Node
     {
-
-        public MathSinNode() : base(1, 1)
+        public MathSinNode() : base("Math", "Sin")
         {
-            this.Title = "Sin";
-            this.Type = "Math/Sin";
+            AddInput(DataType.Number);
+            AddOutput(DataType.Number);
 
-            Inputs[0].Type = DataType.Number;
-            Outputs[0].Type = DataType.Number;
+            options.ResetOutputsIfAnyInputIsNull = true;
         }
 
-        public override void Loop()
-        {
-        }
 
         public override void OnInputChange(Input input)
         {
-            if (Inputs.Any(i => i.Value == null))
-            {
-                ResetOutputs();
-                return;
-            }
-
-            Double a = Double.Parse(Inputs[0].Value);
-            Double b = Math.Sin(a);
+            var a = double.Parse(Inputs[0].Value);
+            var b = Math.Sin(a);
 
             Outputs[0].Value = b.ToString();
+        }
+
+        public override string GetNodeDescription()
+        {
+            return "This node produces the sine of a number.";
         }
     }
 }

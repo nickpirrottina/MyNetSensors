@@ -1,42 +1,29 @@
-﻿/*  MyNetSensors 
-    Copyright (C) 2015 Derwish <derwish.pro@gmail.com>
+﻿/*  MyNodes.NET 
+    Copyright (C) 2016 Derwish <derwish.pro@gmail.com>
     License: http://www.gnu.org/licenses/gpl-3.0.txt  
 */
 
-using System;
-
-namespace MyNetSensors.Nodes
+namespace MyNodes.Nodes
 {
-
     public class OperationCounterNode : Node
     {
-
         public double Value { get; set; }
 
-
-        public OperationCounterNode() : base(3, 1)
+        public OperationCounterNode() : base("Operation", "Counter")
         {
-            this.Title = "Counter";
-            this.Type = "Operation/Counter";
+            AddInput("Set Value", DataType.Number,true);
+            AddInput("Count Up", DataType.Logical, true);
+            AddInput("Count Down", DataType.Logical, true);
+            AddInput("Reset", DataType.Logical, true);
+            AddOutput("Out",DataType.Number);
 
-            Inputs[0].Name = "Set Value";
-            Inputs[1].Name = "Count Up";
-            Inputs[2].Name = "Count Down";
-
-            Inputs[0].Type = DataType.Number;
-            Inputs[1].Type = DataType.Logical;
-            Inputs[2].Type = DataType.Logical;
-            Outputs[0].Type = DataType.Text;
             Outputs[0].Value = Value.ToString();
         }
-
-        public override void Loop()
-        {
-        }
+        
 
         public override void OnInputChange(Input input)
         {
-            double oldValue = Value;
+            var oldValue = Value;
 
             if (input == Inputs[0] && input.Value != null)
                 Value = double.Parse(input.Value);
@@ -47,11 +34,24 @@ namespace MyNetSensors.Nodes
             if (input == Inputs[2] && input.Value == "1")
                 Value--;
 
-            if (oldValue!= Value)
+            if (input == Inputs[3] && input.Value == "1")
+                Value=0;
+
+            if (oldValue != Value)
             {
                 Outputs[0].Value = Value.ToString();
                 UpdateMeInDb();
             }
+        }
+
+        public override string GetNodeDescription()
+        {
+            return "This node increases by 1 an internal counter " +
+                   "when a logical \"1\" comes  to the input \"Count Up\". <br/>" +
+                   "The counter decreases by 1 " +
+                   "when a logical \"1\" comes  to the input \"Count Down\". <br/>" +
+                   "You can override internal value to the specified value (Set Value). <br/>" +
+                   "Logical \"1\" on Reset input will set internal value to 0.";
         }
     }
 }

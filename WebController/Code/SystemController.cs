@@ -1,5 +1,5 @@
-﻿/*  MyNetSensors 
-    Copyright (C) 2015 Derwish <derwish.pro@gmail.com>
+﻿/*  MyNodes.NET 
+    Copyright (C) 2016 Derwish <derwish.pro@gmail.com>
     License: http://www.gnu.org/licenses/gpl-3.0.txt  
 */
 
@@ -11,26 +11,28 @@ using System.Threading.Tasks;
 using Microsoft.AspNet.Hosting.Internal;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.Extensions.Configuration;
-using MyNetSensors.Gateways;
-using MyNetSensors.Gateways.MySensors;
-using MyNetSensors.Nodes;
-using MyNetSensors.Repositories.Dapper;
-using MyNetSensors.Repositories.EF.SQLite;
-using MyNetSensors.Users;
-using MyNetSensors.WebController.ViewModels.Config;
+using MyNodes.Gateways;
+using MyNodes.WebController.ViewModels.Config;
 using Newtonsoft.Json;
-using Node = MyNetSensors.Nodes.Node;
+using Node = MyNodes.Nodes.Node;
 using System.Linq;
+using MyNodes.Gateways.MySensors;
+using MyNodes.Nodes;
+using MyNodes.Repositories.Dapper;
+using MyNodes.Repositories.EF.SQLite;
+using MyNodes.Users;
 
-namespace MyNetSensors.WebController.Code
+namespace MyNodes.WebController.Code
 {
     public static class SystemController
     {
         //CONFIG
         public static GatewayConfig gatewayConfig;
         public static WebServerRules webServerRules;
+        public static WebServerConfig webServerConfig;
         public static DataBaseConfig dataBaseConfig;
         public static NodesEngineConfig nodesEngineConfig;
+        public static NodeEditorConfig nodeEditorConfig;
 
 
         //VARIABLES
@@ -46,9 +48,7 @@ namespace MyNetSensors.WebController.Code
         public static MySensorsNodesEngine mySensorsNodesEngine;
         public static UiNodesEngine uiNodesEngine;
         public static INodesRepository nodesDb;
-        public static INodesStatesRepository nodesStatesDb;
-        public static UITimerNodesEngine uiTimerNodesEngine;
-        public static IUITimerNodesRepository uiTimerNodesDb;
+        public static INodesDataRepository nodesDataDb;
 
         public static Logs logs = new Logs();
 
@@ -77,7 +77,7 @@ namespace MyNetSensors.WebController.Code
                 {
                     firstRun = true;
                     Console.ForegroundColor = ConsoleColor.Cyan;
-                    Console.WriteLine("\nThis is the first run of the system. \nYou can configure MyNetSensors from the web interface.\n");
+                    Console.WriteLine("\nWelcome to MyNodes.NET. \nPlease configure the system in the web interface.\n");
                     Console.ForegroundColor = ConsoleColor.Gray;
                 }
 
@@ -123,76 +123,16 @@ namespace MyNetSensors.WebController.Code
         {
             try
             {
-                SerialGatewayConfig serialGatewayConfig = new SerialGatewayConfig
-                {
-                    Enable = Boolean.Parse(configuration["Gateway:SerialGateway:Enable"]),
-                    SerialPortName = configuration["Gateway:SerialGateway:SerialPortName"],
-                    Boudrate = Int32.Parse(configuration["Gateway:SerialGateway:Boudrate"])
-                };
-
-                EthernetGatewayConfig ethernetGatewayConfig = new EthernetGatewayConfig
-                {
-                    Enable = Boolean.Parse(configuration["Gateway:EthernetGateway:Enable"]),
-                    GatewayIP = configuration["Gateway:EthernetGateway:GatewayIP"],
-                    GatewayPort = Int32.Parse(configuration["Gateway:EthernetGateway:GatewayPort"])
-                };
-
-                gatewayConfig = new GatewayConfig
-                {
-                    SerialGatewayConfig = serialGatewayConfig,
-                    EthernetGatewayConfig = ethernetGatewayConfig,
-                    EnableAutoAssignId = Boolean.Parse(configuration["Gateway:EnableAutoAssignId"]),
-                    EnableMessagesLog = Boolean.Parse(configuration["Gateway:EnableMessagesLog"])
-                };
-
-                logs.config = new LogsConfig
-                {
-                    ShowGatewayState = Boolean.Parse(configuration["Logs:ShowGatewayState"]),
-                    ShowGatewayMessages = Boolean.Parse(configuration["Logs:ShowGatewayMessages"]),
-                    ShowGatewayDecodedMessages = Boolean.Parse(configuration["Logs:ShowGatewayDecodedMessages"]),
-                    ShowDataBaseState = Boolean.Parse(configuration["Logs:ShowDataBaseState"]),
-                    ShowNodesEngineState = Boolean.Parse(configuration["Logs:ShowNodesEngineState"]),
-                    ShowNodesEngineNodes = Boolean.Parse(configuration["Logs:ShowNodesEngineNodes"]),
-                    ShowSystemState = Boolean.Parse(configuration["Logs:ShowSystemState"]),
-
-                    StoreGatewayState = Boolean.Parse(configuration["Logs:StoreGatewayState"]),
-                    StoreGatewayMessages = Boolean.Parse(configuration["Logs:StoreGatewayMessages"]),
-                    StoreGatewayDecodedMessages = Boolean.Parse(configuration["Logs:StoreGatewayDecodedMessages"]),
-                    StoreDataBaseState = Boolean.Parse(configuration["Logs:StoreDataBaseState"]),
-                    StoreNodesEngineState = Boolean.Parse(configuration["Logs:StoreNodesEngineState"]),
-                    StoreNodesEngineNodes = Boolean.Parse(configuration["Logs:StoreNodesEngineNodes"]),
-                    StoreSystemState = Boolean.Parse(configuration["Logs:StoreSystemState"]),
-
-                    MaxGatewayState = Int32.Parse(configuration["Logs:MaxGatewayState"]),
-                    MaxGatewayMessages = Int32.Parse(configuration["Logs:MaxGatewayMessages"]),
-                    MaxGatewayDecodedMessages = Int32.Parse(configuration["Logs:MaxGatewayDecodedMessages"]),
-                    MaxDataBaseState = Int32.Parse(configuration["Logs:MaxDataBaseState"]),
-                    MaxNodesEngineState = Int32.Parse(configuration["Logs:MaxNodesEngineState"]),
-                    MaxNodesEngineNodes = Int32.Parse(configuration["Logs:MaxNodesEngineNodes"]),
-                    MaxSystemState = Int32.Parse(configuration["Logs:MaxSystemState"]),
-                };
-
-
-                nodesEngineConfig = new NodesEngineConfig
-                {
-                    Enable = Boolean.Parse(configuration["NodesEngine:Enable"]),
-                    UpdateInterval = Int32.Parse(configuration["NodesEngine:UpdateInterval"])
-                };
-
-                dataBaseConfig = new DataBaseConfig
-                {
-                    Enable = Boolean.Parse(configuration["DataBase:Enable"]),
-                    UseInternalDb = Boolean.Parse(configuration["DataBase:UseInternalDb"]),
-                    WriteInterval = Int32.Parse(configuration["DataBase:WriteInterval"]),
-                    ExternalDbConnectionString = configuration["DataBase:ExternalDbConnectionString"]
-                };
-
-                webServerRules = new WebServerRules
-                {
-                    AllowFullAccessWithoutAuthorization = Boolean.Parse(configuration["WebServer:Rules:AllowFullAccessWithoutAuthorization"]),
-                    AllowRegistrationOfNewUsers = Boolean.Parse(configuration["WebServer:Rules:AllowRegistrationOfNewUsers"])
-                };
-
+                gatewayConfig = configuration.Get<GatewayConfig>("Gateway");
+                gatewayConfig.SerialGatewayConfig = configuration.Get<SerialGatewayConfig>("Gateway:SerialGateway");
+                gatewayConfig.EthernetGatewayConfig = configuration.Get<EthernetGatewayConfig>("Gateway:EthernetGateway");
+                logs.config = configuration.Get<LogsConfig>("Logs");
+                logs.consoleConfig = configuration.Get<ConsoleConfig>("Console");
+                nodesEngineConfig = configuration.Get<NodesEngineConfig>("NodesEngine");
+                nodeEditorConfig = configuration.Get<NodeEditorConfig>("NodeEditor");
+                dataBaseConfig = configuration.Get<DataBaseConfig>("DataBase");
+                webServerRules = configuration.Get<WebServerRules>("WebServer");
+                webServerConfig = configuration.Get<WebServerConfig>("WebServer");
             }
             catch
             {
@@ -218,10 +158,9 @@ namespace MyNetSensors.WebController.Code
             if (!dataBaseConfig.Enable)
             {
                 nodesDb = null;
-                nodesStatesDb = null;
+                nodesDataDb = null;
                 mySensorsDb = null;
                 mySensorsMessagesDb = null;
-                uiTimerNodesDb = null;
                 usersDb = null;
                 return;
             }
@@ -233,17 +172,15 @@ namespace MyNetSensors.WebController.Code
             if (dataBaseConfig.UseInternalDb)
             {
                 NodesDbContext nodesDbContext = (NodesDbContext)services.GetService(typeof(NodesDbContext));
-                NodesStatesHistoryDbContext nodesStatesHistoryDbContext = (NodesStatesHistoryDbContext)services.GetService(typeof(NodesStatesHistoryDbContext));
+                NodesDataDbContext nodesDataDbContext = (NodesDataDbContext)services.GetService(typeof(NodesDataDbContext));
                 MySensorsNodesDbContext mySensorsNodesDbContext = (MySensorsNodesDbContext)services.GetService(typeof(MySensorsNodesDbContext));
                 MySensorsMessagesDbContext mySensorsMessagesDbContext = (MySensorsMessagesDbContext)services.GetService(typeof(MySensorsMessagesDbContext));
-                UITimerNodesDbContext uiTimerNodesDbContext = (UITimerNodesDbContext)services.GetService(typeof(UITimerNodesDbContext));
                 UsersDbContext usersDbContext = (UsersDbContext)services.GetService(typeof(UsersDbContext));
 
                 nodesDb = new NodesRepositoryEf(nodesDbContext);
-                nodesStatesDb = new NodesStatesRepositoryEf(nodesStatesHistoryDbContext);
+                nodesDataDb = new NodesDataRepositoryEf(nodesDataDbContext);
                 mySensorsDb = new MySensorsRepositoryEf(mySensorsNodesDbContext);
                 mySensorsMessagesDb = new MySensorsMessagesRepositoryEf(mySensorsMessagesDbContext);
-                uiTimerNodesDb = new UITimerNodesRepositoryEf(uiTimerNodesDbContext);
                 usersDb = new UsersRepositoryEf(usersDbContext);
             }
             else
@@ -255,10 +192,9 @@ namespace MyNetSensors.WebController.Code
                 }
 
                 nodesDb = new NodesRepositoryDapper(dataBaseConfig.ExternalDbConnectionString);
-                nodesStatesDb = new NodesStatesRepositoryDapper(dataBaseConfig.ExternalDbConnectionString);
+                nodesDataDb = new NodesDataRepositoryDapper(dataBaseConfig.ExternalDbConnectionString);
                 mySensorsDb = new MySensorsRepositoryDapper(dataBaseConfig.ExternalDbConnectionString);
                 mySensorsMessagesDb = new MySensorsMessagesRepositoryDapper(dataBaseConfig.ExternalDbConnectionString);
-                uiTimerNodesDb = new UITimerNodesRepositoryDapper(dataBaseConfig.ExternalDbConnectionString);
                 usersDb = new UsersRepositoryDapper(dataBaseConfig.ExternalDbConnectionString);
             }
 
@@ -275,6 +211,10 @@ namespace MyNetSensors.WebController.Code
             nodesDb.OnLogInfo += logs.AddDataBaseInfo;
             nodesDb.OnLogError += logs.AddDataBaseError;
 
+            nodesDataDb.SetWriteInterval(dataBaseConfig.WriteInterval);
+            nodesDataDb.OnLogInfo += logs.AddDataBaseInfo;
+            nodesDataDb.OnLogError += logs.AddDataBaseError;
+
             logs.AddSystemInfo("Database connected.");
         }
 
@@ -289,7 +229,7 @@ namespace MyNetSensors.WebController.Code
             if (Boolean.Parse(configuration["Develop:GenerateNodesJsListFileOnStart"]))
                 GenerateNodesJsListFile();
 
-            nodesEngine = new NodesEngine(nodesDb);
+            nodesEngine = new NodesEngine(nodesDb, nodesDataDb);
             nodesEngine.SetUpdateInterval(nodesEngineConfig.UpdateInterval);
             nodesEngine.OnLogEngineInfo += logs.AddNodesEngineInfo;
             nodesEngine.OnLogEngineError += logs.AddNodesEngineError;
@@ -301,8 +241,7 @@ namespace MyNetSensors.WebController.Code
             else
                 mySensorsNodesEngine = null;
 
-            uiNodesEngine = new UiNodesEngine(nodesEngine, nodesStatesDb);
-            uiTimerNodesEngine = new UITimerNodesEngine(nodesEngine, uiTimerNodesDb);
+            uiNodesEngine = new UiNodesEngine(nodesEngine);
 
             if (!nodesEngineConfig.Enable) return;
 
@@ -319,21 +258,13 @@ namespace MyNetSensors.WebController.Code
         {
             try
             {
-                List<Node> nodes = typeof (Node)
-                    .Assembly.GetTypes()
-                    .Where(t => t.IsSubclassOf(typeof (Node)) && !t.IsAbstract)
-                    .Select(t => (Node) Activator.CreateInstance(t)).ToList();
 
-                nodes.AddRange(typeof (UiNode)
-                    .Assembly.GetTypes()
-                    .Where(t => t.IsSubclassOf(typeof (UiNode)) && !t.IsAbstract)
-                    .Select(t => (UiNode) Activator.CreateInstance(t)).ToList());
+                List<Nodes.Node> nodes = AppDomain.CurrentDomain.GetAssemblies()
+                    .SelectMany(s => s.GetTypes())
+                     .Where(t => t.IsSubclassOf(typeof(Nodes.Node)) && !t.IsAbstract)
+                    .Select(t => (Nodes.Node)Activator.CreateInstance(t)).ToList();
 
-                nodes.Add((UiTimerNode) Activator.CreateInstance(typeof (UiTimerNode)));
-
-
-
-                nodes = nodes.OrderBy(x => x.Type).ToList();
+                nodes = nodes.OrderBy(x => x.Category + x.Type).ToList();
 
                 string file = "(function () {\n";
 
@@ -342,13 +273,13 @@ namespace MyNetSensors.WebController.Code
 
                 file += "\n})();";
 
-                System.IO.File.WriteAllText("wwwroot/js/nodes-editor/nodes-editor-list.js", file);
+                System.IO.File.WriteAllText("wwwroot/js/node-editor/node-editor-list.js", file);
 
-                logs.AddSystemInfo($"Generated nodes editor script with {nodes.Count} nodes");
+                logs.AddSystemInfo($"Generated node editor script with {nodes.Count} nodes");
             }
             catch (Exception ex)
             {
-                logs.AddSystemError($"Failed to generate nodes editor script. "+ex.Message);
+                logs.AddSystemError($"Failed to generate node editor script. " + ex.Message);
             }
 
         }
@@ -385,7 +316,6 @@ namespace MyNetSensors.WebController.Code
             gateway.OnLogInfo += logs.AddGatewayInfo;
             gateway.OnLogError += logs.AddGatewayError;
             gateway.endlessConnectionAttempts = true;
-            gateway.messagesLogEnabled = gatewayConfig.EnableMessagesLog;
             gateway.OnConnected += GatewayConnected;
             gateway.OnDisconnected += GatewayDisconnected;
 
@@ -432,8 +362,7 @@ namespace MyNetSensors.WebController.Code
             mySensorsMessagesDb.RemoveAllMessages();
             nodesDb.RemoveAllLinks();
             nodesDb.RemoveAllNodes();
-            nodesStatesDb.RemoveAllStates();
-            uiTimerNodesDb.RemoveAllTasks();
+            nodesDataDb.RemoveAllNodesData();
             usersDb.RemoveAllUsers();
         }
     }

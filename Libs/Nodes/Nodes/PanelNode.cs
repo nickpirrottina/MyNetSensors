@@ -1,28 +1,20 @@
-﻿/*  MyNetSensors 
-    Copyright (C) 2015 Derwish <derwish.pro@gmail.com>
+﻿/*  MyNodes.NET 
+    Copyright (C) 2016 Derwish <derwish.pro@gmail.com>
     License: http://www.gnu.org/licenses/gpl-3.0.txt  
 */
 
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
 
-namespace MyNetSensors.Nodes
+namespace MyNodes.Nodes
 {
-
     public class PanelNode : Node
     {
-        public PanelNode() : base(0, 0)
+        public PanelNode() : base("Main", "Panel")
         {
-            this.Title = "Panel";
-            this.Type = "Main/Panel";
-
             Settings.Add("Name", new NodeSetting(NodeSettingType.Text, "Name", ""));
         }
 
-        public override void Loop()
-        {
-        }
 
         public override void OnInputChange(Input input)
         {
@@ -35,7 +27,7 @@ namespace MyNetSensors.Nodes
             if (Inputs.Any(x => x.Id == node.Id))
                 return;
 
-            Input input = new Input
+            var input = new Input
             {
                 Id = node.Id,
                 Name = GenerateNewInputName()
@@ -44,7 +36,7 @@ namespace MyNetSensors.Nodes
             node.Settings["Name"].Value = input.Name;
             AddInput(input);
 
-            UpdateMe();
+            UpdateMeInEditor();
             UpdateMeInDb();
         }
 
@@ -54,7 +46,7 @@ namespace MyNetSensors.Nodes
                 return;
 
 
-            Output output = new Output
+            var output = new Output
             {
                 Id = node.Id,
                 Name = GenerateOutputName()
@@ -63,41 +55,32 @@ namespace MyNetSensors.Nodes
             node.Settings["Name"].Value = output.Name;
             AddOutput(output);
 
-            UpdateMe();
+            UpdateMeInEditor();
             UpdateMeInDb();
         }
 
 
-
-        public bool RemoveInput(PanelInputNode node)
+        public bool RemovePanelInput(PanelInputNode node)
         {
-            Input input = engine.GetInput(node.Id);
+            var input = engine.GetInput(node.Id);
 
-            Link link = engine.GetLinkForInput(input);
-            if (link != null)
-                engine.RemoveLink(link);
+            RemoveInput(input);
 
-            Inputs.Remove(input);
-            UpdateMe();
+            UpdateMeInEditor();
             UpdateMeInDb();
             return true;
         }
 
-        public bool RemoveOutput(PanelOutputNode node)
+        public bool RemovePanelOutput(PanelOutputNode node)
         {
-            Output output = engine.GetOutput(node.Id);
+            var output = engine.GetOutput(node.Id);
 
-            List<Link> links = engine.GetLinksForOutput(output);
-            foreach (var link in links)
-                engine.RemoveLink(link);
+            RemoveOutput(output);
 
-            Outputs.Remove(output);
-            UpdateMe();
+            UpdateMeInEditor();
             UpdateMeInDb();
             return true;
         }
-
-
 
 
         public override bool OnAddToEngine(NodesEngine engine)
@@ -115,9 +98,9 @@ namespace MyNetSensors.Nodes
         private string GeneratePanelName()
         {
             //auto naming
-            List<PanelNode> panels = engine.GetPanelNodes();
-            List<string> names = panels.Select(x => x.Settings["Name"].Value).ToList();
-            for (int i = 1; i <= names.Count + 1; i++)
+            var panels = engine.GetPanelNodes();
+            var names = panels.Select(x => x.Settings["Name"].Value).ToList();
+            for (var i = 1; i <= names.Count + 1; i++)
             {
                 if (!names.Contains($"Panel {i}"))
                     return $"Panel {i}";
@@ -126,20 +109,13 @@ namespace MyNetSensors.Nodes
         }
 
 
-        public override void OnRemove()
-        {
-            List<Node> nodesList = engine.GetNodesForPanel(Id, false);
-            foreach (var n in nodesList)
-            {
-                engine.RemoveNode(n);
-            }
-        }
+
 
         private string GenerateNewInputName()
         {
             //auto naming
-            List<string> names = Inputs.Select(x => x.Name).ToList();
-            for (int i = 1; i <= names.Count + 1; i++)
+            var names = Inputs.Select(x => x.Name).ToList();
+            for (var i = 1; i <= names.Count + 1; i++)
             {
                 if (!names.Contains($"In {i}"))
                     return $"In {i}";
@@ -150,14 +126,23 @@ namespace MyNetSensors.Nodes
         private string GenerateOutputName()
         {
             //auto naming
-            List<string> names = Outputs.Select(x => x.Name).ToList();
-            for (int i = 1; i <= names.Count + 1; i++)
+            var names = Outputs.Select(x => x.Name).ToList();
+            for (var i = 1; i <= names.Count + 1; i++)
             {
                 if (!names.Contains($"Out {i}"))
                     return $"Out {i}";
             }
             return null;
         }
+
+
+        public override bool SetSettings(Dictionary<string, string> data)
+        {
+            bool result = base.SetSettings(data);
+            UpdateMeOnDashboard();
+            return result;
+        }
+
 
         public override string GetJsListGenerationScript()
         {
@@ -166,20 +151,19 @@ namespace MyNetSensors.Nodes
             //PanelNode
             function PanelNode() {
                 this.properties = {
-                    'ObjectType': 'MyNetSensors.Nodes.PanelNode',
+                    'ObjectType': 'MyNodes.Nodes.PanelNode',
                     'Assembly': 'Nodes'
                 };
-                this.bgcolor = '#565656';
             }
             PanelNode.title = 'Panel';
             PanelNode.prototype.getExtraMenuOptions = function (graphcanvas) {
                 var that = this;
                 return [
-                    { content: 'Open', callback: function () { window.location = '/NodesEditor/Panel/' + that.id; } },
+                    { content: 'Open', callback: function () { window.location = '/NodeEditor/Panel/' + that.id; } },
                     null, //null for horizontal line
                     { content: 'Show on Dashboard', callback: function () { var win = window.open('/Dashboard/Panel/' + that.id, '_blank'); win.focus(); } },
                     null,
-                    { content: 'Export to file', callback: function () { var win = window.open('/NodesEditorAPI/SerializePanelToFile/' + that.id, '_blank'); win.focus(); } },
+                    { content: 'Export to file', callback: function () { var win = window.open('/NodeEditorAPI/SerializePanelToFile/' + that.id, '_blank'); win.focus(); } },
                     { content: 'Export to script', callback: function () { editor.exportPanelToScript(that.id) } },
                     { content: 'Export URL', callback: function () { editor.exportPanelURL(that.id) } },
                     null
@@ -188,6 +172,19 @@ namespace MyNetSensors.Nodes
             LiteGraph.registerNodeType('Main/Panel', PanelNode);
 
             ";
+        }
+
+        public override string GetNodeDescription()
+        {
+            return "This node can contain other nodes. <br/>" +
+                   "You can add any number of inputs/outputs to this node, " +
+                   "and connect them with the nodes inside. <br/>" +
+                   "Thus you can create your own nodes, which are named Panels.<br/> " +
+                   "You can export the panels to save them on disk and import later. " +
+                   "Or, you can share your panels with other people. <br/>" +
+                   "Each panel has its own dashboard. <br/>" +
+                   "You can add UI nodes, to create a separate control interface. <br/>" +
+                   "Each UI panel will be available in the browser via a separate link. ";
         }
     }
 }

@@ -1,21 +1,36 @@
-﻿using System;
+﻿/*  MyNodes.NET 
+    Copyright (C) 2016 Derwish <derwish.pro@gmail.com>
+    License: http://www.gnu.org/licenses/gpl-3.0.txt  
+*/
+
+using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using MyNetSensors.Gateways.MySensors;
+using MyNodes.Gateways.MySensors;
 
-namespace MyNetSensors.WebController.Code
+namespace MyNodes.WebController.Code
 {
     public delegate void LogMessageEventHandler(LogRecord record);
     public delegate void LogMySensorsMessageEventHandler(Message record);
+
     public class Logs
     {
-        public List<LogRecord> gatewayLog = new List<LogRecord>();
-        public List<LogRecord> gatewayMessagesLog = new List<LogRecord>();
-        public List<Message> gatewayDecodedMessagesLog = new List<Message>();
-        public List<LogRecord> dataBaseLog = new List<LogRecord>();
-        public List<LogRecord> nodesEngineLog = new List<LogRecord>();
-        public List<LogRecord> nodesLog = new List<LogRecord>();
-        public List<LogRecord> systemLog = new List<LogRecord>();
+        private List<LogRecord> gatewayLog = new List<LogRecord>();
+        private List<LogRecord> gatewayMessagesLog = new List<LogRecord>();
+        private List<Message> gatewayDecodedMessagesLog = new List<Message>();
+        private List<LogRecord> dataBaseLog = new List<LogRecord>();
+        private List<LogRecord> nodesEngineLog = new List<LogRecord>();
+        private List<LogRecord> nodesLog = new List<LogRecord>();
+        private List<LogRecord> systemLog = new List<LogRecord>();
+
+        Object gatewayLogLock = new object();
+        Object gatewayMessagesLogLock = new object();
+        Object gatewayDecodedMessagesLogLock = new object();
+        Object dataBaseLogLock = new object();
+        Object nodesEngineLogLock = new object();
+        Object nodesLogLock = new object();
+        Object systemLogLock = new object();
 
         public event LogMessageEventHandler OnGatewayLogInfo;
         public event LogMessageEventHandler OnGatewayLogError;
@@ -30,8 +45,8 @@ namespace MyNetSensors.WebController.Code
         public event LogMessageEventHandler OnSystemLogInfo;
         public event LogMessageEventHandler OnSystemLogError;
 
-        public LogsConfig config;
-
+        public LogsConfig config=new LogsConfig();
+        public ConsoleConfig consoleConfig=new ConsoleConfig();
 
 
 
@@ -39,16 +54,19 @@ namespace MyNetSensors.WebController.Code
         {
             LogRecord logRecord = new LogRecord(LogRecordSource.Gateway, LogRecordType.Info, message);
 
-            if (config.ShowGatewayState)
+            if (consoleConfig.ShowGatewayState)
                 Show(logRecord);
 
             OnGatewayLogInfo?.Invoke(logRecord);
 
             if (config.StoreGatewayState)
             {
-                gatewayLog.Add(logRecord);
-                if (gatewayLog.Count > config.MaxGatewayState)
-                    gatewayLog.RemoveAt(0);
+                lock (gatewayLogLock)
+                {
+                    gatewayLog.Add(logRecord);
+                    if (gatewayLog.Count > config.MaxGatewayState)
+                        gatewayLog.RemoveAt(0);
+                }
             }
         }
 
@@ -56,50 +74,59 @@ namespace MyNetSensors.WebController.Code
         {
             LogRecord logRecord = new LogRecord(LogRecordSource.Gateway, LogRecordType.Error, message);
 
-            if (config.ShowGatewayState)
+            if (consoleConfig.ShowGatewayState || consoleConfig.ShowAllErrors)
                 Show(logRecord);
 
             OnGatewayLogError?.Invoke(logRecord);
 
             if (config.StoreGatewayState)
             {
-                gatewayLog.Add(logRecord);
-                if (gatewayLog.Count > config.MaxGatewayState)
-                    gatewayLog.RemoveAt(0);
+                lock (gatewayLogLock)
+                {
+                    gatewayLog.Add(logRecord);
+                    if (gatewayLog.Count > config.MaxGatewayState)
+                        gatewayLog.RemoveAt(0);
+                }
             }
         }
 
         public void AddGatewayDecodedMessage(Message message)
         {
-            LogRecord logRecord = new LogRecord(LogRecordSource.GatewayDecodedMessage, LogRecordType.Info, message.ToString());
+            LogRecord logRecord = new LogRecord(LogRecordSource.GatewayDecodedMessages, LogRecordType.Info, message.ToString());
 
-            if (config.ShowGatewayDecodedMessages)
+            if (consoleConfig.ShowGatewayDecodedMessages)
                 Show(logRecord);
 
             OnGatewayDecodedMessageLog?.Invoke(message);
 
             if (config.StoreGatewayDecodedMessages)
             {
-                gatewayDecodedMessagesLog.Add(message);
-                if (gatewayDecodedMessagesLog.Count > config.MaxGatewayDecodedMessages)
-                    gatewayDecodedMessagesLog.RemoveAt(0);
+                lock (gatewayDecodedMessagesLogLock)
+                {
+                    gatewayDecodedMessagesLog.Add(message);
+                    if (gatewayDecodedMessagesLog.Count > config.MaxGatewayDecodedMessages)
+                        gatewayDecodedMessagesLog.RemoveAt(0);
+                }
             }
         }
 
         public void AddGatewayMessage(string message)
         {
-            LogRecord logRecord = new LogRecord(LogRecordSource.GatewayMessage, LogRecordType.Info, message);
+            LogRecord logRecord = new LogRecord(LogRecordSource.GatewayMessages, LogRecordType.Info, message);
 
-            if (config.ShowGatewayMessages)
+            if (consoleConfig.ShowGatewayMessages)
                 Show(logRecord);
 
             OnGatewayMessageLog?.Invoke(logRecord);
 
             if (config.StoreGatewayMessages)
             {
-                gatewayMessagesLog.Add(logRecord);
-                if (gatewayMessagesLog.Count > config.MaxGatewayMessages)
-                    gatewayMessagesLog.RemoveAt(0);
+                lock (gatewayMessagesLogLock)
+                {
+                    gatewayMessagesLog.Add(logRecord);
+                    if (gatewayMessagesLog.Count > config.MaxGatewayMessages)
+                        gatewayMessagesLog.RemoveAt(0);
+                }
             }
         }
 
@@ -107,16 +134,19 @@ namespace MyNetSensors.WebController.Code
         {
             LogRecord logRecord = new LogRecord(LogRecordSource.DataBase, LogRecordType.Info, message);
 
-            if (config.ShowDataBaseState)
+            if (consoleConfig.ShowDataBaseState)
                 Show(logRecord);
 
             OnDataBaseLogInfo?.Invoke(logRecord);
 
             if (config.StoreDataBaseState)
             {
-                dataBaseLog.Add(logRecord);
-                if (dataBaseLog.Count > config.MaxDataBaseState)
-                    dataBaseLog.RemoveAt(0);
+                lock (dataBaseLogLock)
+                {
+                    dataBaseLog.Add(logRecord);
+                    if (dataBaseLog.Count > config.MaxDataBaseState)
+                        dataBaseLog.RemoveAt(0);
+                }
             }
         }
 
@@ -124,16 +154,19 @@ namespace MyNetSensors.WebController.Code
         {
             LogRecord logRecord = new LogRecord(LogRecordSource.DataBase, LogRecordType.Error, message);
 
-            if (config.ShowDataBaseState)
+            if (consoleConfig.ShowDataBaseState || consoleConfig.ShowAllErrors)
                 Show(logRecord);
 
             OnDataBaseLogError?.Invoke(logRecord);
 
             if (config.StoreDataBaseState)
             {
-                dataBaseLog.Add(logRecord);
-                if (dataBaseLog.Count > config.MaxDataBaseState)
-                    dataBaseLog.RemoveAt(0);
+                lock (dataBaseLogLock)
+                {
+                    dataBaseLog.Add(logRecord);
+                    if (dataBaseLog.Count > config.MaxDataBaseState)
+                        dataBaseLog.RemoveAt(0);
+                }
             }
         }
 
@@ -141,16 +174,19 @@ namespace MyNetSensors.WebController.Code
         {
             LogRecord logRecord = new LogRecord(LogRecordSource.NodesEngine, LogRecordType.Info, message);
 
-            if (config.ShowNodesEngineState)
+            if (consoleConfig.ShowNodesEngineState)
                 Show(logRecord);
 
             OnNodesEngineLogInfo?.Invoke(logRecord);
 
             if (config.StoreNodesEngineState)
             {
-                nodesEngineLog.Add(logRecord);
-                if (nodesEngineLog.Count > config.MaxNodesEngineState)
-                    nodesEngineLog.RemoveAt(0);
+                lock (nodesEngineLogLock)
+                {
+                    nodesEngineLog.Add(logRecord);
+                    if (nodesEngineLog.Count > config.MaxNodesEngineState)
+                        nodesEngineLog.RemoveAt(0);
+                }
             }
         }
 
@@ -158,16 +194,19 @@ namespace MyNetSensors.WebController.Code
         {
             LogRecord logRecord = new LogRecord(LogRecordSource.NodesEngine, LogRecordType.Error, message);
 
-            if (config.ShowNodesEngineState)
+            if (consoleConfig.ShowNodesEngineState || consoleConfig.ShowAllErrors)
                 Show(logRecord);
 
             OnNodesEngineLogError?.Invoke(logRecord);
 
             if (config.StoreNodesEngineState)
             {
-                nodesEngineLog.Add(logRecord);
-                if (nodesEngineLog.Count > config.MaxNodesEngineState)
-                    nodesEngineLog.RemoveAt(0);
+                lock (nodesEngineLogLock)
+                {
+                    nodesEngineLog.Add(logRecord);
+                    if (nodesEngineLog.Count > config.MaxNodesEngineState)
+                        nodesEngineLog.RemoveAt(0);
+                }
             }
         }
 
@@ -175,32 +214,38 @@ namespace MyNetSensors.WebController.Code
         {
             LogRecord logRecord = new LogRecord(LogRecordSource.Nodes, LogRecordType.Info, message);
 
-            if (config.ShowNodesEngineNodes)
+            if (consoleConfig.ShowNodesEngineNodes)
                 Show(logRecord);
 
             OnNodeLogInfo?.Invoke(logRecord);
 
             if (config.StoreNodesEngineNodes)
             {
-                nodesLog.Add(logRecord);
-                if (nodesLog.Count > config.MaxNodesEngineNodes)
-                    nodesLog.RemoveAt(0);
+                lock (nodesLogLock)
+                {
+                    nodesLog.Add(logRecord);
+                    if (nodesLog.Count > config.MaxNodesEngineNodes)
+                        nodesLog.RemoveAt(0);
+                }
             }
         }
         public void AddNodeError(string message)
         {
             LogRecord logRecord = new LogRecord(LogRecordSource.Nodes, LogRecordType.Error, message);
 
-            if (config.ShowNodesEngineNodes)
+            if (consoleConfig.ShowNodesEngineNodes || consoleConfig.ShowAllErrors)
                 Show(logRecord);
 
             OnNodeLogError?.Invoke(logRecord);
 
             if (config.StoreNodesEngineNodes)
             {
-                nodesLog.Add(logRecord);
-                if (nodesLog.Count > config.MaxNodesEngineNodes)
-                    nodesLog.RemoveAt(0);
+                lock (nodesLogLock)
+                {
+                    nodesLog.Add(logRecord);
+                    if (nodesLog.Count > config.MaxNodesEngineNodes)
+                        nodesLog.RemoveAt(0);
+                }
             }
         }
 
@@ -209,16 +254,19 @@ namespace MyNetSensors.WebController.Code
         {
             LogRecord logRecord = new LogRecord(LogRecordSource.System, LogRecordType.Info, message);
 
-            if (config.ShowSystemState)
+            if (consoleConfig.ShowSystemState)
                 Show(logRecord);
 
             OnSystemLogInfo?.Invoke(logRecord);
 
             if (config.StoreSystemState)
             {
-                systemLog.Add(logRecord);
-                if (systemLog.Count > config.MaxSystemState)
-                    systemLog.RemoveAt(0);
+                lock (systemLogLock)
+                {
+                    systemLog.Add(logRecord);
+                    if (systemLog.Count > config.MaxSystemState)
+                        systemLog.RemoveAt(0);
+                }
             }
         }
 
@@ -226,16 +274,19 @@ namespace MyNetSensors.WebController.Code
         {
             LogRecord logRecord = new LogRecord(LogRecordSource.System, LogRecordType.Error, message);
 
-            if (config.ShowSystemState)
+            if (consoleConfig.ShowSystemState || consoleConfig.ShowAllErrors)
                 Show(logRecord);
 
             OnSystemLogError?.Invoke(logRecord);
 
             if (config.StoreSystemState)
             {
-                systemLog.Add(logRecord);
-                if (systemLog.Count > config.MaxSystemState)
-                    systemLog.RemoveAt(0);
+                lock (systemLogLock)
+                {
+                    systemLog.Add(logRecord);
+                    if (systemLog.Count > config.MaxSystemState)
+                        systemLog.RemoveAt(0);
+                }
             }
         }
 
@@ -257,23 +308,95 @@ namespace MyNetSensors.WebController.Code
         public List<LogRecord> GetErrorsLogs()
         {
             List<LogRecord> list = new List<LogRecord>();
-            list.AddRange(gatewayLog.Where(x=>x.Type==LogRecordType.Error));
-            list.AddRange(nodesEngineLog.Where(x => x.Type == LogRecordType.Error));
-            list.AddRange(nodesLog.Where(x => x.Type == LogRecordType.Error));
-            list.AddRange(dataBaseLog.Where(x => x.Type == LogRecordType.Error));
-            list.AddRange(systemLog.Where(x => x.Type == LogRecordType.Error));
+
+            lock (gatewayLogLock)
+                list.AddRange(gatewayLog.Where(x => x.Type == LogRecordType.Error));
+            lock (nodesEngineLogLock)
+                list.AddRange(nodesEngineLog.Where(x => x.Type == LogRecordType.Error));
+            lock (nodesLogLock)
+                list.AddRange(nodesLog.Where(x => x.Type == LogRecordType.Error));
+            lock (dataBaseLogLock)
+                list.AddRange(dataBaseLog.Where(x => x.Type == LogRecordType.Error));
+            lock (systemLogLock)
+                list.AddRange(systemLog.Where(x => x.Type == LogRecordType.Error));
+
             return list.OrderBy(x => x.Date).ToList();
+        }
+
+
+        public List<LogRecord> GetLogsOfSource(LogRecordSource logRecordSource)
+        {
+            switch (logRecordSource)
+            {
+                case LogRecordSource.Gateway:
+                    return gatewayLog;
+                case LogRecordSource.GatewayMessages:
+                    return gatewayMessagesLog;
+                case LogRecordSource.GatewayDecodedMessages:
+                    return gatewayDecodedMessagesLog.Select(log => new LogRecord(LogRecordSource.GatewayDecodedMessages, LogRecordType.Info, log.ToString())).ToList(); ;
+                case LogRecordSource.DataBase:
+                    return dataBaseLog;
+                case LogRecordSource.NodesEngine:
+                    return nodesEngineLog;
+                case LogRecordSource.Nodes:
+                    return nodesLog;
+                case LogRecordSource.System:
+                    return systemLog;
+            }
+            return null;
+        }
+
+        public void ClearLogsOfSource(LogRecordSource logRecordSource)
+        {
+            switch (logRecordSource)
+            {
+                case LogRecordSource.Gateway:
+                    lock (gatewayLogLock)
+                            gatewayLog.Clear();
+                    break;
+                case LogRecordSource.GatewayMessages:
+                    lock (gatewayMessagesLogLock)
+                            gatewayMessagesLog.Clear();
+                    break;
+                case LogRecordSource.GatewayDecodedMessages:
+                    lock (gatewayDecodedMessagesLogLock)
+                            gatewayDecodedMessagesLog.Clear();
+                    break;
+                case LogRecordSource.DataBase:
+                    lock (dataBaseLogLock)
+                            dataBaseLog.Clear();
+                    break;
+                case LogRecordSource.NodesEngine:
+                    lock (nodesEngineLogLock)
+                            nodesEngineLog.Clear();
+                    break;
+                case LogRecordSource.Nodes:
+                    lock (nodesLogLock)
+                            nodesLog.Clear();
+                    break;
+                case LogRecordSource.System:
+                    lock (systemLogLock)
+                            systemLog.Clear();
+                    break;
+            }
         }
 
         public void ClearAllLogs()
         {
-            gatewayLog.Clear();
-            gatewayMessagesLog.Clear();
-            gatewayDecodedMessagesLog.Clear();
-            nodesEngineLog.Clear();
-            nodesLog.Clear();
-            dataBaseLog.Clear();
-            systemLog.Clear();
+            lock (gatewayLogLock)
+                gatewayLog.Clear();
+            lock (gatewayMessagesLogLock)
+                gatewayMessagesLog.Clear();
+            lock (gatewayDecodedMessagesLogLock)
+                gatewayDecodedMessagesLog.Clear();
+            lock (nodesEngineLogLock)
+                nodesEngineLog.Clear();
+            lock (nodesLogLock)
+                nodesLog.Clear();
+            lock (dataBaseLogLock)
+                dataBaseLog.Clear();
+            lock (systemLogLock)
+                systemLog.Clear();
         }
 
 
@@ -288,10 +411,10 @@ namespace MyNetSensors.WebController.Code
                     case LogRecordSource.Gateway:
                         Console.ForegroundColor = ConsoleColor.Green;
                         break;
-                    case LogRecordSource.GatewayMessage:
+                    case LogRecordSource.GatewayMessages:
                         Console.ForegroundColor = ConsoleColor.DarkGreen;
                         break;
-                    case LogRecordSource.GatewayDecodedMessage:
+                    case LogRecordSource.GatewayDecodedMessages:
                         Console.ForegroundColor = ConsoleColor.DarkGreen;
                         break;
                     case LogRecordSource.DataBase:

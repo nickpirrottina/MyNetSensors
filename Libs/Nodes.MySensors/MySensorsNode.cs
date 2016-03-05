@@ -1,36 +1,35 @@
-﻿using System;
+﻿/*  MyNodes.NET 
+    Copyright (C) 2016 Derwish <derwish.pro@gmail.com>
+    License: http://www.gnu.org/licenses/gpl-3.0.txt  
+*/
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using MyNetSensors.Gateways;
-using MyNetSensors.Gateways.MySensors;
-using Node = MyNetSensors.Nodes.Node;
+using MyNodes.Gateways;
+using MyNodes.Gateways.MySensors;
+using Node = MyNodes.Nodes.Node;
 
-namespace MyNetSensors.Nodes
+namespace MyNodes.Nodes
 {
     public class MySensorsNode : Node
     {
         public int nodeId;
 
 
-        public MySensorsNode(Gateways.MySensors.Node node) : base(0, 0)
+        public MySensorsNode(Gateways.MySensors.Node node) : base("Hardware", "MySensors")
         {
             this.nodeId = node.Id;
-            this.Title = node.GetSimpleName2();
-            this.Type = "Nodes/Hardware";
+            Settings.Add("Name", new NodeSetting(NodeSettingType.Text, "Name", node.GetSimpleName2()));
             CreateInputsOutputs(node);
         }
 
 
-        public MySensorsNode() : base(0, 0)
-        {
-
-        }
-
-
-
-        public override void Loop()
+        public MySensorsNode() : base("Hardware", "MySensors")
         {
         }
+
+
 
         public override void OnInputChange(Input input)
         {
@@ -46,7 +45,7 @@ namespace MyNetSensors.Nodes
                     input.Value);
             else
             {
-               // LogError($"Can`t send message to Node[{mySensorsNodeInput.nodeId}] Sensor[{mySensorsNodeInput.sensorId}]. Gateway is not connected.");
+                // LogError($"Can`t send message to Node[{mySensorsNodeInput.nodeId}] Sensor[{mySensorsNodeInput.sensorId}]. Gateway is not connected.");
             }
         }
 
@@ -102,11 +101,11 @@ namespace MyNetSensors.Nodes
             {
                 output = new Output { Name = "Battery" };
                 output.SlotIndex = Int32.MaxValue;
-               AddOutput(output);
+                AddOutput(output);
+                UpdateMeInEditor();
             }
 
             output.Value = batteryLevel.ToString();
-            UpdateMe();
             UpdateMeInDb();
         }
 
@@ -116,16 +115,21 @@ namespace MyNetSensors.Nodes
 
             function MySensorsNode() {
                 this.properties = {
-                    'ObjectType': 'MyNetSensors.Nodes.MySensorsNode',
+                    'ObjectType': 'MyNodes.Nodes.MySensorsNode',
                     'Assembly': 'Nodes.MySensors'
                 };
                 this.clonable = false;
             }
             MySensorsNode.title = 'MySensors Node';
             MySensorsNode.skip_list = true;
-            LiteGraph.registerNodeType('Nodes/Hardware', MySensorsNode);
+            LiteGraph.registerNodeType('Hardware/MySensors', MySensorsNode);
 
             ";
+        }
+
+        public override string GetNodeDescription()
+        {
+            return "This is hardware MySenosrs node.";
         }
     }
 }

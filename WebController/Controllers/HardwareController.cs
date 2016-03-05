@@ -1,17 +1,17 @@
-﻿/*  MyNetSensors 
-    Copyright (C) 2015 Derwish <derwish.pro@gmail.com>
+﻿/*  MyNodes.NET 
+    Copyright (C) 2016 Derwish <derwish.pro@gmail.com>
     License: http://www.gnu.org/licenses/gpl-3.0.txt  
 */
 
 using System;
 using Microsoft.AspNet.Mvc;
 using Microsoft.AspNet.Authorization;
-using MyNetSensors.Gateways.MySensors;
-using MyNetSensors.Users;
-using MyNetSensors.WebController.Code;
+using MyNodes.Gateways.MySensors;
+using MyNodes.Users;
+using MyNodes.WebController.Code;
 
 
-namespace MyNetSensors.WebController.Controllers
+namespace MyNodes.WebController.Controllers
 {
 
 

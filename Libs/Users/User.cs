@@ -1,8 +1,13 @@
-﻿using System;
+﻿/*  MyNodes.NET 
+    Copyright (C) 2016 Derwish <derwish.pro@gmail.com>
+    License: http://www.gnu.org/licenses/gpl-3.0.txt  
+*/
+
+using System;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 
-namespace MyNetSensors.Users
+namespace MyNodes.Users
 {
     public class User
     {
@@ -36,6 +41,7 @@ namespace MyNetSensors.Users
                 UserClaims.DashboardEditor,
                 UserClaims.EditorObserver,
                 UserClaims.EditorEditor,
+                UserClaims.EditorProtectedAccess,
                 UserClaims.HardwareObserver,
                 UserClaims.LogsObserver,
                 UserClaims.LogsEditor,
@@ -59,6 +65,7 @@ namespace MyNetSensors.Users
                 DashboardEditor = claims.Contains(UserClaims.DashboardEditor),
                 EditorObserver = claims.Contains(UserClaims.EditorObserver),
                 EditorEditor = claims.Contains(UserClaims.EditorEditor),
+                EditorProtectedAccess = claims.Contains(UserClaims.EditorProtectedAccess),
                 HardwareObserver = claims.Contains(UserClaims.HardwareObserver),
                 LogsObserver = claims.Contains(UserClaims.LogsObserver),
                 LogsEditor = claims.Contains(UserClaims.LogsEditor),
@@ -81,6 +88,8 @@ namespace MyNetSensors.Users
                 claims.Add(UserClaims.EditorObserver);
             if (userPermissions.EditorEditor)
                 claims.Add(UserClaims.EditorEditor);
+            if (userPermissions.EditorProtectedAccess)
+                claims.Add(UserClaims.EditorProtectedAccess);
             if (userPermissions.HardwareObserver)
                 claims.Add(UserClaims.HardwareObserver);
             if (userPermissions.LogsObserver)

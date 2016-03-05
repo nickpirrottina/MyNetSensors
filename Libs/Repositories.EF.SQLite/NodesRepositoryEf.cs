@@ -1,13 +1,18 @@
-﻿using System;
+﻿/*  MyNodes.NET 
+    Copyright (C) 2016 Derwish <derwish.pro@gmail.com>
+    License: http://www.gnu.org/licenses/gpl-3.0.txt  
+*/
+
+using System;
 using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Diagnostics;
 using System.Linq;
 using System.Timers;
 using Microsoft.Data.Entity;
-using MyNetSensors.Nodes;
+using MyNodes.Nodes;
 
-namespace MyNetSensors.Repositories.EF.SQLite
+namespace MyNodes.Repositories.EF.SQLite
 {
     public class NodesRepositoryEf : INodesRepository
     {
@@ -41,7 +46,7 @@ namespace MyNetSensors.Repositories.EF.SQLite
                 updateDbTimer.Start();
             }
         }
-        
+
         private void UpdateDbTimerEvent(object sender, object e)
         {
             updateDbTimer.Stop();
@@ -65,7 +70,7 @@ namespace MyNetSensors.Repositories.EF.SQLite
                 float messagesPerSec = (float)count / (float)elapsed * 1000;
                 LogInfo($"Writing nodes: {elapsed} ms ({count} inserts, {(int)messagesPerSec} inserts/sec)");
             }
-            catch (Exception ex)
+            catch
             {
 
             }
@@ -80,11 +85,11 @@ namespace MyNetSensors.Repositories.EF.SQLite
             updatedNodes.CopyTo(nodes);
             updatedNodes.Clear();
 
-            List<SerializedNode> serializedNodes=new List<SerializedNode>();
+            List<SerializedNode> serializedNodes = new List<SerializedNode>();
             foreach (var node in nodes)
             {
                 SerializedNode oldNode = db.SerializedNodes.FirstOrDefault(x => x.Id == node.Id);
-                if (oldNode ==null)
+                if (oldNode == null)
                     continue;
 
                 SerializedNode newNode = new SerializedNode(node);
@@ -132,16 +137,26 @@ namespace MyNetSensors.Repositories.EF.SQLite
             }
         }
 
-        
 
-        public string AddNode(Node node)
+
+        public void AddNode(Node node)
         {
 
             SerializedNode serializedNode = new SerializedNode(node);
             db.SerializedNodes.Add(serializedNode);
-            db.SaveChanges();
 
-            return serializedNode.Id;
+            db.SaveChanges();
+        }
+
+        public void AddNodes(List<Node> nodes)
+        {
+            foreach (var node in nodes)
+            {
+                SerializedNode serializedNode = new SerializedNode(node);
+                db.SerializedNodes.Add(serializedNode);
+            }
+
+            db.SaveChanges();
         }
 
         public void UpdateNode(Node node)
@@ -149,7 +164,7 @@ namespace MyNetSensors.Repositories.EF.SQLite
             if (writeInterval != 0)
             {
                 if (!updatedNodes.Contains(node))
-                updatedNodes.Add(node);
+                    updatedNodes.Add(node);
                 return;
             }
 
@@ -167,7 +182,7 @@ namespace MyNetSensors.Repositories.EF.SQLite
 
         public Node GetNode(string id)
         {
-            SerializedNode serializedNode = db.SerializedNodes.FirstOrDefault(x=>x.Id==id);
+            SerializedNode serializedNode = db.SerializedNodes.FirstOrDefault(x => x.Id == id);
             if (serializedNode != null)
             {
                 Node node = serializedNode.GetDeserializedNode();
@@ -203,9 +218,24 @@ namespace MyNetSensors.Repositories.EF.SQLite
                 updatedNodes.Remove(updNode);
 
             SerializedNode node = db.SerializedNodes.FirstOrDefault(x => x.Id == id);
-            if (node==null)
+            if (node == null)
                 return;
             db.SerializedNodes.Remove(node);
+            db.SaveChanges();
+        }
+
+        public void RemoveNodes(List<Node> nodes)
+        {
+            foreach (var node in nodes)
+            {
+                Node updNode = updatedNodes.FirstOrDefault(x => x.Id == node.Id);
+                if (updNode != null)
+                    updatedNodes.Remove(updNode);
+
+                SerializedNode snode = db.SerializedNodes.FirstOrDefault(x => x.Id == node.Id);
+                if (snode != null)
+                    db.SerializedNodes.Remove(snode);
+            }
             db.SaveChanges();
         }
 
@@ -219,15 +249,25 @@ namespace MyNetSensors.Repositories.EF.SQLite
 
 
 
-        
-        public string AddLink(Link link)
-        {
-            db.Links.Add(link);
-            db.SaveChanges();
 
-            return link.Id;
+        public void AddLink(Link link)
+        {
+            //if (!db.Links.Any(x => x.Id == link.Id))
+            db.Links.Add(link);
+
+            db.SaveChanges();
         }
-        
+
+        public void AddLinks(List<Link> links)
+        {
+            foreach (var link in links)
+            {
+                db.Links.Add(link);
+            }
+
+            db.SaveChanges();
+        }
+
         public Link GetLink(string id)
         {
             return db.Links.FirstOrDefault(x => x.Id == id);
@@ -244,6 +284,17 @@ namespace MyNetSensors.Repositories.EF.SQLite
             if (link == null)
                 return;
             db.Links.Remove(link);
+            db.SaveChanges();
+        }
+
+        public void RemoveLinks(List<Link> links)
+        {
+            foreach (var link in links)
+            {
+                if (db.Links.Any(x => x.Id == link.Id))
+                    db.Links.Remove(link);
+            }
+            //db.Links.RemoveRange(links);
             db.SaveChanges();
         }
 

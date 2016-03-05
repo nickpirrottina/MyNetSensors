@@ -1,5 +1,5 @@
-﻿/*  MyNetSensors 
-    Copyright (C) 2015 Derwish <derwish.pro@gmail.com>
+﻿/*  MyNodes.NET 
+    Copyright (C) 2016 Derwish <derwish.pro@gmail.com>
     License: http://www.gnu.org/licenses/gpl-3.0.txt  
 */
 
@@ -9,10 +9,10 @@ using System.Threading.Tasks;
 using Microsoft.AspNet.Http;
 using Microsoft.AspNet.SignalR;
 using Microsoft.AspNet.SignalR.Hubs;
-using MyNetSensors.Nodes;
 using System.Linq;
+using MyNodes.Nodes;
 
-namespace MyNetSensors.WebController.Code
+namespace MyNodes.WebController.Code
 {
     public class SoftNodesHub : Hub
     {
@@ -28,7 +28,10 @@ namespace MyNetSensors.WebController.Code
                 if (engine == null)
                     return 2;
 
-                List<ConnectionRemoteReceiverNode> receivers = engine.GetNodes()
+                List<ConnectionRemoteReceiverNode> receivers;
+
+                lock (engine.nodesLock)
+                    receivers=engine.GetNodes()
                     .OfType<ConnectionRemoteReceiverNode>()
                     .Where(x => x.GetChannel().ToString() == channel)
                     .ToList();

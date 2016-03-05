@@ -1,15 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿/*  MyNodes.NET 
+    Copyright (C) 2016 Derwish <derwish.pro@gmail.com>
+    License: http://www.gnu.org/licenses/gpl-3.0.txt  
+*/
+
 using Microsoft.AspNet.SignalR;
 using Microsoft.AspNet.SignalR.Infrastructure;
-using MyNetSensors.Gateways;
-using MyNetSensors.Gateways.MySensors;
-using MyNetSensors.WebController.Controllers;
+using MyNodes.Gateways.MySensors;
 
 
-namespace MyNetSensors.WebController.Code
+namespace MyNodes.WebController.Code
 {
     public static class MySensorsSignalRServer
     {

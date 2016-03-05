@@ -1,6 +1,11 @@
-﻿using System.Collections.Generic;
+﻿/*  MyNodes.NET 
+    Copyright (C) 2016 Derwish <derwish.pro@gmail.com>
+    License: http://www.gnu.org/licenses/gpl-3.0.txt  
+*/
 
-namespace MyNetSensors.Gateways.MySensors
+using System.Collections.Generic;
+
+namespace MyNodes.Gateways.MySensors
 {
     public interface IMySensorsMessagesRepository
     {

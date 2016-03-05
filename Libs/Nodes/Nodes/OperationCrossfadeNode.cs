@@ -1,52 +1,38 @@
 ﻿//planer-pro copyright 2015 GPL - license.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace MyNetSensors.Nodes
+namespace MyNodes.Nodes
 {
-
     public class OperationCrossfadeNode : Node
     {
-
-        public OperationCrossfadeNode() : base(3, 1)
+        public OperationCrossfadeNode() : base("Operation", "Crossfade")
         {
-            this.Title = "Crossfade";
-            this.Type = "Operation/Crossfade";
+            AddInput("Crossfade", DataType.Number);
+            AddInput("A", DataType.Number);
+            AddInput("B", DataType.Number);
+            AddOutput("Out", DataType.Number);
 
-            Inputs[0].Type = DataType.Number;
-            Inputs[1].Type = DataType.Number;
-            Inputs[2].Type = DataType.Number;
-            Outputs[0].Type = DataType.Number;
-
-            Inputs[0].Name = "Crossfade";
-            Inputs[1].Name = "A";
-            Inputs[2].Name = "B";
-
-        }
-
-        public override void Loop()
-        {
+            options.ResetOutputsIfAnyInputIsNull = true;
         }
 
         public override void OnInputChange(Input input)
         {
-            if (Inputs.Any(i => i.Value == null))
-            {
-                ResetOutputs();
-                return;
-            }
+            var xf = double.Parse(Inputs[0].Value);
+            var a = double.Parse(Inputs[1].Value);
+            var b = double.Parse(Inputs[2].Value);
 
-            Double xf = Double.Parse(Inputs[0].Value);
-            Double a = Double.Parse(Inputs[1].Value);
-            Double b = Double.Parse(Inputs[2].Value);
-
-            Double xout = a * (1 - xf / 100) + b * xf / 100;
+            var xout = a*(1 - xf/100) + b*xf/100;
 
             Outputs[0].Value = xout.ToString();
+        }
+
+        public override string GetNodeDescription()
+        {
+            return "This node makes the crossfade between two values. <br/>" +
+                   "\"Crossfade\" input takes a value from 0 to 100. <br/>" +
+                   "If Crossfade is 0, the output will be equal to A. <br/>" +
+                   "If Crossfade is 100, then the output is equal to B. <br/>" +
+                   "The intermediate value between 0 and 100 will give " +
+                   "intermediate number between A and B. ";
         }
     }
 }

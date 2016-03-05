@@ -1,42 +1,27 @@
-﻿//planer-pro copyright 2015 GPL - license.
+﻿/*  MyNodes.NET 
+    Copyright (C) 2016 Derwish <derwish.pro@gmail.com>
+    License: http://www.gnu.org/licenses/gpl-3.0.txt  
+*/
 
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace MyNetSensors.Nodes
+namespace MyNodes.Nodes
 {
-
     public class SystemFileNode : Node
     {
-
-        public SystemFileNode() : base(5, 1)
+        public SystemFileNode() : base("System", "File")
         {
-            this.Title = "File";
-            this.Type = "System/File";
+            AddInput("File Name", DataType.Text);
+            AddInput("Text", DataType.Text,true);
+            AddInput("Read", DataType.Logical, true);
+            AddInput("Write", DataType.Logical, true);
+            AddInput("Clear", DataType.Logical, true);
 
-            Inputs[0].Name = "File Name";
-            Inputs[1].Name = "Text";
-            Inputs[2].Name = "Read";
-            Inputs[3].Name = "Write";
-            Inputs[4].Name = "Clear";
-            Outputs[0].Name = "Text";
-
-            Inputs[0].Type = DataType.Text;
-            Inputs[1].Type = DataType.Text;
-            Inputs[2].Type = DataType.Logical;
-            Inputs[3].Type = DataType.Logical;
-            Inputs[4].Type = DataType.Logical;
-            Outputs[0].Type = DataType.Text;
+            AddOutput("Text");
 
             options.LogOutputChanges = false;
-        }
-
-        public override void Loop()
-        {
+            options.ProtectedAccess = true;
         }
 
         public override void OnInputChange(Input input)
@@ -44,7 +29,7 @@ namespace MyNetSensors.Nodes
             //delete
             if (input == Inputs[4] && input.Value == "1")
             {
-                string fileName = Inputs[0].Value;
+                var fileName = Inputs[0].Value;
                 try
                 {
                     File.Delete(fileName);
@@ -59,10 +44,10 @@ namespace MyNetSensors.Nodes
             //write
             if (input == Inputs[3] && input.Value == "1")
             {
-                string fileName = Inputs[0].Value;
+                var fileName = Inputs[0].Value;
                 try
                 {
-                    string text = Inputs[1].Value;
+                    var text = Inputs[1].Value;
                     File.AppendAllText(fileName, text);
                 }
                 catch (Exception)
@@ -74,10 +59,10 @@ namespace MyNetSensors.Nodes
             //read
             if (input == Inputs[2] && input.Value == "1")
             {
-                string fileName = Inputs[0].Value;
+                var fileName = Inputs[0].Value;
                 try
                 {
-                    string text = File.ReadAllText(fileName);
+                    var text = File.ReadAllText(fileName);
                     Outputs[0].Value = text;
                 }
                 catch (Exception)
@@ -86,6 +71,15 @@ namespace MyNetSensors.Nodes
                     Outputs[0].Value = null;
                 }
             }
+        }
+
+        public override string GetNodeDescription()
+        {
+            return "This node can read and write any file on the disk. <br/>" +
+                   "Send the file name To the input named File Name. The path can be omitted. <br/>" +
+                   "With logic inputs named Read, Write, Clear you can perform the requested operation. <br/>" +
+                   "The input named Text set a text value to be written to the file. <br/>" +
+                   "The contents of the file will be sent to the output.";
         }
     }
 }

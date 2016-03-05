@@ -1,42 +1,25 @@
-﻿/*  MyNetSensors 
-    Copyright (C) 2015 Derwish <derwish.pro@gmail.com>
+﻿/*  MyNodes.NET 
+    Copyright (C) 2016 Derwish <derwish.pro@gmail.com>
     License: http://www.gnu.org/licenses/gpl-3.0.txt  
 */
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace MyNetSensors.Nodes
+namespace MyNodes.Nodes
 {
     public class OperationFlipflopNode : Node
     {
-        private int part = 0;
-        string result = null;
+        private int part;
+        private string result;
 
-        public OperationFlipflopNode() : base(1, 1)
+        public OperationFlipflopNode() : base("Operation", "Flip-Flop")
         {
-            this.Title = "Flip-Flop";
-            this.Type = "Operation/Flip-Flop";
+            AddInput(DataType.Logical);
+            AddOutput(DataType.Logical);
 
-            Inputs[0].Type = DataType.Logical;
-            Outputs[0].Type = DataType.Logical;
-        }
-
-        public override void Loop()
-        {
+            options.ResetOutputsIfAnyInputIsNull = true;
         }
 
         public override void OnInputChange(Input input)
         {
-            if (Inputs.Any(i => i.Value == null))
-            {
-                ResetOutputs();
-                return;
-            }
-
             switch (part)
             {
                 case 0:
@@ -73,6 +56,13 @@ namespace MyNetSensors.Nodes
             }
 
             Outputs[0].Value = result;
+        }
+
+        public override string GetNodeDescription()
+        {
+            return "This node divides the frequency by 2. <br/>" +
+                   "For example, if you send to the input of the following sequence: " +
+                   "1010 1010, the output is 1100 1100.";
         }
     }
 }

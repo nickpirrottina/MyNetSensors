@@ -1,50 +1,35 @@
-﻿/*  MyNetSensors 
-    Copyright (C) 2015 Derwish <derwish.pro@gmail.com>
+﻿/*  MyNodes.NET 
+    Copyright (C) 2016 Derwish <derwish.pro@gmail.com>
     License: http://www.gnu.org/licenses/gpl-3.0.txt  
 */
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace MyNetSensors.Nodes
+namespace MyNodes.Nodes
 {
     public class MathClampNode : Node
     {
-
-        public MathClampNode() : base(3, 1)
+        public MathClampNode() : base("Math", "Clamp")
         {
-            this.Title = "Clamp";
-            this.Type = "Math/Clamp";
+            AddInput("Value", DataType.Number);
+            AddInput("Min", DataType.Number, true);
+            AddInput("Max", DataType.Number, true);
+            AddOutput(DataType.Number);
 
-            Inputs[0].Name = "Value";
-            Inputs[1].Name = "Min";
-            Inputs[2].Name = "Max";
-
-            Inputs[0].Type = DataType.Number;
-            Inputs[1].Type = DataType.Number;
-            Inputs[2].Type = DataType.Number;
-            Outputs[0].Type = DataType.Number;
+            options.ResetOutputsIfAnyInputIsNull = true;
         }
 
-        public override void Loop()
-        {
-        }
 
         public override void OnInputChange(Input input)
         {
-            if (Inputs.Any(i => i.Value == null))
-            {
-                ResetOutputs();
-                return;
-            }
+            double min = 0;
+            double max = 100;
 
-            Double value = Double.Parse(Inputs[0].Value);
-            Double min = Double.Parse(Inputs[1].Value);
-            Double max = Double.Parse(Inputs[2].Value);
+            double value = double.Parse(Inputs[0].Value);
+
+            if (Inputs[1].Value != null)
+                min = double.Parse(Inputs[1].Value);
+
+            if (Inputs[2].Value != null)
+                max = double.Parse(Inputs[2].Value);
 
             if (min > max)
             {
@@ -53,9 +38,18 @@ namespace MyNetSensors.Nodes
                 return;
             }
 
-            Double result = (value < min) ? min : (value > max) ? max : value;
+            var result = value < min ? min : value > max ? max : value;
 
             Outputs[0].Value = result.ToString();
+        }
+
+        public override string GetNodeDescription()
+        {
+            return "This node limits the value to the specified range. <br/>" +
+                   "For example, Min=3, Max=5. <br/>" +
+                   "Now, if the \"Value\" input is 1, the output will be 3. <br/>" +
+                   "If the value is 6, the output will be 5. <br/>" +
+                   "If the value is 2.5, the output will be 2.5. <br/>";
         }
     }
 }

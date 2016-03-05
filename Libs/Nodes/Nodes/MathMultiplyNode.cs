@@ -1,44 +1,30 @@
 ﻿//planer-pro copyright 2015 GPL - license.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace MyNetSensors.Nodes
+namespace MyNodes.Nodes
 {
-
     public class MathMultiplyNode : Node
     {
-
-        public MathMultiplyNode() : base(2, 1)
+        public MathMultiplyNode() : base("Math", "Multiply")
         {
-            this.Title = "Multiply";
-            this.Type = "Math/Multiply";
+            AddInput(DataType.Number);
+            AddInput(DataType.Number);
+            AddOutput(DataType.Number);
 
-            Inputs[0].Type = DataType.Number;
-            Inputs[1].Type = DataType.Number;
-            Outputs[0].Type = DataType.Number;
-        }
-
-        public override void Loop()
-        {
+            options.ResetOutputsIfAnyInputIsNull = true;
         }
 
         public override void OnInputChange(Input input)
         {
-            if (Inputs.Any(i => i.Value == null))
-            {
-                ResetOutputs();
-                return;
-            }
-
-            Double a = Double.Parse(Inputs[0].Value);
-            Double b = Double.Parse(Inputs[1].Value);
-            Double c = a * b;
+            var a = double.Parse(Inputs[0].Value);
+            var b = double.Parse(Inputs[1].Value);
+            var c = a*b;
 
             Outputs[0].Value = c.ToString();
+        }
+
+        public override string GetNodeDescription()
+        {
+            return "This node multiplies one number by another.";
         }
     }
 }

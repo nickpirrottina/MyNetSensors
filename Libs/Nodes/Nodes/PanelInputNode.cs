@@ -1,32 +1,22 @@
-﻿/*  MyNetSensors 
-    Copyright (C) 2015 Derwish <derwish.pro@gmail.com>
+﻿/*  MyNodes.NET 
+    Copyright (C) 2016 Derwish <derwish.pro@gmail.com>
     License: http://www.gnu.org/licenses/gpl-3.0.txt  
 */
 
 using System.Collections.Generic;
-using System.Linq;
 
-namespace MyNetSensors.Nodes
+namespace MyNodes.Nodes
 {
     public class PanelInputNode : Node
     {
         //Id must be equal to panel input id
 
-        public PanelInputNode() : base(0, 1)
+        public PanelInputNode() : base("Main", "Panel Input")
         {
-            this.Title = "Input";
-            this.Type = "Main/Panel Input";
-
+            AddOutput();
             Settings.Add("Name", new NodeSetting(NodeSettingType.Text, "Name", ""));
         }
 
-        public override void Loop()
-        {
-        }
-
-        public override void OnInputChange(Input input)
-        {
-        }
 
         public override bool OnAddToEngine(NodesEngine engine)
         {
@@ -36,7 +26,7 @@ namespace MyNetSensors.Nodes
                 return false;
             }
 
-            PanelNode panel = engine.GetPanelNode(PanelId);
+            var panel = engine.GetPanelNode(PanelId);
             if (panel == null)
             {
                 LogError($"Can`t create panel input. Panel [{PanelId}] does not exist.");
@@ -49,24 +39,23 @@ namespace MyNetSensors.Nodes
             return true;
         }
 
-       
 
         public override void OnRemove()
         {
-            PanelNode panel = engine.GetPanelNode(PanelId);
-            panel?.RemoveInput(this);
+            var panel = engine.GetPanelNode(PanelId);
+            panel?.RemovePanelInput(this);
         }
 
         public void UpdateName(string name)
         {
             Settings["Name"].Value = name;
 
-            Input input = engine.GetInput(Id);
+            var input = engine.GetInput(Id);
             input.Name = name;
 
             Node panel = engine.GetPanelNode(PanelId);
 
-            engine.UpdateNode(panel);
+            engine.UpdateNodeInEditor(panel);
             engine.UpdateNodeInDb(panel);
         }
 
@@ -76,23 +65,11 @@ namespace MyNetSensors.Nodes
             return base.SetSettings(data);
         }
 
-        public override string GetJsListGenerationScript()
+        public override string GetNodeDescription()
         {
-            return @"
-
-            //PanelOutputNode
-            function PanelInputNode() {
-                this.properties = {
-                    ObjectType: 'MyNetSensors.Nodes.PanelInputNode',
-                    'Assembly': 'Nodes'
-                };
-                this.bgcolor = '#151515';
-
-            }
-            PanelInputNode.title = 'Panel Input';
-            LiteGraph.registerNodeType('Main/Panel Input', PanelInputNode);
-
-            ";
+            return "This node adds the Input to the panel.<br/>" +
+                   "The value that comes on the outside of the panel, " +
+                   "becomes available inside the panel.";
         }
     }
 }

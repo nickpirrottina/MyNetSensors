@@ -1,12 +1,17 @@
-﻿using System;
+﻿/*  MyNodes.NET 
+    Copyright (C) 2016 Derwish <derwish.pro@gmail.com>
+    License: http://www.gnu.org/licenses/gpl-3.0.txt  
+*/
 
-namespace MyNetSensors.WebController.Code
+using System;
+
+namespace MyNodes.WebController.Code
 {
     public enum LogRecordSource
     {
         Gateway,
-        GatewayMessage,
-        GatewayDecodedMessage,
+        GatewayMessages,
+        GatewayDecodedMessages,
         DataBase,
         NodesEngine,
         Nodes,
@@ -47,9 +52,9 @@ namespace MyNetSensors.WebController.Code
             {
                 case LogRecordSource.Gateway:
                     return $"{Date}: GATEWAY: {Message}";
-                case LogRecordSource.GatewayMessage:
+                case LogRecordSource.GatewayMessages:
                     return $"{Date}: GATEWAY: {Message}";
-                case LogRecordSource.GatewayDecodedMessage:
+                case LogRecordSource.GatewayDecodedMessages:
                     return $"{Date}: GATEWAY: {Message}";
                 case LogRecordSource.DataBase:
                     return $"{Date}: DATABASE: {Message}";

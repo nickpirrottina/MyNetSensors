@@ -1,15 +1,16 @@
-﻿/*  MyNetSensors 
-    Copyright (C) 2015-2016 Derwish <derwish.pro@gmail.com>
+﻿/*  MyNodes.NET 
+    Copyright (C) 2016 Derwish <derwish.pro@gmail.com>
     License: http://www.gnu.org/licenses/gpl-3.0.txt  
 */
 
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Timers;
 using Newtonsoft.Json;
 
-namespace MyNetSensors.Nodes
+namespace MyNodes.Nodes
 {
     public delegate void LogEventHandler(string message);
     public delegate void LogMessageEventHandler(string message);
@@ -20,13 +21,17 @@ namespace MyNetSensors.Nodes
 
         //If you have tons of nodes, and system perfomance decreased, increase this value,
         //and you will get less nodes updating frequency 
-        private int UPDATE_NODES_INTEVAL = 1;
+        private double updateInterval = 1;
 
         private INodesRepository nodesDb;
+        public INodesDataRepository dataDb;
 
-        private Timer updateNodesTimer = new Timer();
+        //  private Timer updateNodesTimer = new Timer();
         private List<Node> nodes = new List<Node>();
         private List<Link> links = new List<Link>();
+
+        public Object nodesLock = new object();
+        public Object linksLock = new object();
 
         private bool started = false;
 
@@ -39,7 +44,8 @@ namespace MyNetSensors.Nodes
 
         public event NodeEventHandler OnNewNode;
         public event NodeEventHandler OnRemoveNode;
-        public event NodeEventHandler OnNodeUpdated;
+        public event NodeEventHandler OnNodeUpdatedOnDashboard;
+        public event NodeEventHandler OnNodeUpdatedInEditor;
         public event NodeEventHandler OnNodeActivity;
         public event InputEventHandler OnInputStateUpdated;
         public event OutputEventHandler OnOutputStateUpdated;
@@ -57,22 +63,19 @@ namespace MyNetSensors.Nodes
         public delegate void OutputEventHandler(Output output);
         public delegate void LinkEventHandler(Link link);
 
+        private DateTime lastUpdateTime;
 
 
 
-        public NodesEngine(INodesRepository nodesDb = null)
+        public NodesEngine(INodesRepository nodesDb = null, INodesDataRepository dataDb = null)
         {
-            //var x= AppDomain.CurrentDomain.GetAssemblies()
-            //           .SelectMany(assembly => assembly.GetTypes())
-            //           .Where(type => type.IsSubclassOf(typeof(Node))).ToList();
-
 
             NodesEngine.nodesEngine = this;
 
             this.nodesDb = nodesDb;
+            this.dataDb = dataDb;
 
-            updateNodesTimer.Elapsed += UpdateNodes;
-            updateNodesTimer.Interval = UPDATE_NODES_INTEVAL;
+            lastUpdateTime = DateTime.Now;
 
             activityTimer.Elapsed += UpdateShowActivity;
             activityTimer.Interval = SHOW_ACTIVITY_INTERVAL;
@@ -83,6 +86,8 @@ namespace MyNetSensors.Nodes
                 GetNodesFromRepository();
                 GetLinksFromRepository();
             }
+
+            UpdateNodesLoop();
         }
 
 
@@ -104,7 +109,7 @@ namespace MyNetSensors.Nodes
 
             started = true;
 
-            updateNodesTimer.Start();
+            //     updateNodesTimer.Start();
             OnStart?.Invoke();
             LogEngineInfo("Started");
         }
@@ -118,7 +123,7 @@ namespace MyNetSensors.Nodes
             started = false;
             starting = false;
 
-            updateNodesTimer.Stop();
+            //       updateNodesTimer.Stop();
             changedInputsStack.Clear();
 
             OnStop?.Invoke();
@@ -133,21 +138,20 @@ namespace MyNetSensors.Nodes
 
         public void GetNodesFromRepository()
         {
-            if (nodesDb != null)
-                nodes = nodesDb.GetAllNodes();
-
-            //to prevent changing of collection while writing to db is not yet finished
-            Node[] nodesArray = new Node[nodes.Count];
-            nodes.CopyTo(nodesArray);
-
-            foreach (var node in nodesArray)
+            lock (nodesLock)
             {
-                bool checkNodeCanBeAdded = node.OnAddToEngine(this);
-                if (!checkNodeCanBeAdded)
+                if (nodesDb != null)
+                    nodes = nodesDb.GetAllNodes();
+
+                foreach (var node in nodes.ToArray())
                 {
-                    LogEngineError($"Can`t create node [{node.GetType().Name}]. Aborted by node.");
-                    nodes.Remove(node);
-                    continue;
+                    bool checkNodeCanBeAdded = node.OnAddToEngine(this);
+                    if (!checkNodeCanBeAdded)
+                    {
+                        LogEngineError($"Can`t create node [{node.GetType().Name}]. Aborted by node.");
+                        nodes.Remove(node);
+                        continue;
+                    }
                 }
             }
         }
@@ -156,18 +160,19 @@ namespace MyNetSensors.Nodes
 
         private void GetLinksFromRepository()
         {
-            if (nodesDb != null)
-                links = nodesDb.GetAllLinks();
-
-            //remove link if node is not exist
-            Link[] oldLinks = links.ToArray();
-            foreach (var link in oldLinks)
+            lock (linksLock)
             {
-                if (GetInput(link.InputId) == null || GetOutput(link.OutputId) == null)
-                {
-                    nodesDb?.RemoveLink(link.Id);
+                if (nodesDb != null)
+                    links = nodesDb.GetAllLinks();
 
-                    links.Remove(link);
+                foreach (var link in links.ToArray())
+                {
+                    if (GetInput(link.InputId) == null || GetOutput(link.OutputId) == null)
+                    {
+                        nodesDb?.RemoveLink(link.Id);
+
+                        links.Remove(link);
+                    }
                 }
             }
         }
@@ -185,7 +190,7 @@ namespace MyNetSensors.Nodes
 
             Node node = GetInputOwner(input.Id);
 
-            if(node==null)
+            if (node == null)
                 return;
 
             ShowNodeActivity(node);
@@ -197,7 +202,7 @@ namespace MyNetSensors.Nodes
                     changedInputsStack.Remove(input);
                 }
                 catch { }
-                LogEngineError($"Message dropped at Node [{node.PanelName}: {node.Title}].");
+                LogEngineError($"Event dropped in [{node.PanelName}: {node.Type}].");
                 return;
             }
             changedInputsStack.Add(input);
@@ -206,11 +211,16 @@ namespace MyNetSensors.Nodes
 
             OnInputStateUpdated?.Invoke(input);
 
-            node.OnInputChange(input);
+            if (node.GetNodeOptions().ResetOutputsIfAnyInputIsNull
+                && node.Inputs.Any(i => !i.IsOptional && i.Value == null))
+                node.ResetOutputs();
+            else
+                node.OnInputChange(input);
 
             try
             {
-                changedInputsStack.Remove(input);
+                if (changedInputsStack.Contains(input))
+                    changedInputsStack.Remove(input);
             }
             catch { }
 
@@ -234,46 +244,44 @@ namespace MyNetSensors.Nodes
         }
 
 
-        private void UpdateNodes(object sender, ElapsedEventArgs e)
+        private void UpdateNodesLoop()
         {
-            if (nodes == null || !nodes.Any())
-                return;
-
-            updateNodesTimer.Stop();
-
-            try
+            Task.Run(() =>
             {
-                //to prevent changing of collection while writing to db is not yet finished
-                Node[] nodesTemp = new Node[nodes.Count];
-                nodes.CopyTo(nodesTemp);
-
-                foreach (var node in nodesTemp)
+                while (true)
                 {
-                    node.Loop();
-                    if (!started)
-                        break;
+                    if ((DateTime.Now - lastUpdateTime).TotalMilliseconds < updateInterval)
+                        continue;
+
+                    lastUpdateTime = DateTime.Now;
+
+                    lock (nodesLock)
+                    {
+                        if (nodes == null || !nodes.Any())
+                            continue;
+
+                        try
+                        {
+                            foreach (var node in nodes)
+                            {
+                                node.Loop();
+                                if (!started)
+                                    break;
+                            }
+
+                            if (started)
+                                OnUpdateLoop?.Invoke();
+                        }
+                        catch
+                        {
+                        }
+                    }
                 }
-
-                OnUpdateLoop?.Invoke();
-            }
-            catch { }
-
-            if (started)
-                updateNodesTimer.Start();
+            });
         }
 
 
 
-
-        private void LogNodeInfo(string message)
-        {
-            OnLogNodeInfo?.Invoke(message);
-        }
-
-        private void LogNodeError(string message)
-        {
-            OnLogNodeError?.Invoke(message);
-        }
 
         public List<Node> GetNodes()
         {
@@ -287,73 +295,126 @@ namespace MyNetSensors.Nodes
 
 
 
-
-
-        public void SetUpdateInterval(int ms)
+        public void SetUpdateInterval(double ms)
         {
-            UPDATE_NODES_INTEVAL = ms;
-            updateNodesTimer.Stop();
-            updateNodesTimer.Interval = UPDATE_NODES_INTEVAL;
-            updateNodesTimer.Start();
+            updateInterval = ms;
         }
 
-        public int GetUpdateInterval()
+        public double GetUpdateInterval()
         {
-            return UPDATE_NODES_INTEVAL;
+            return updateInterval;
         }
 
 
         public Node GetNode(string id)
         {
-            return nodes.FirstOrDefault(x => x.Id == id);
+            lock (nodesLock)
+                return nodes.FirstOrDefault(x => x.Id == id);
         }
 
 
-        public void AddNode(Node node)
+        public bool AddNode(Node node, bool writeInDb = true)
         {
             if (node.PanelId != MAIN_PANEL_ID && GetPanelNode(node.PanelId) == null)
             {
                 LogEngineError($"Can`t create node [{node.GetType().Name}]. Panel [{node.PanelId}] does not exist.");
-                return;
+                return false;
             }
 
             bool checkNodeCanBeAdded = node.OnAddToEngine(this);
             if (!checkNodeCanBeAdded)
             {
                 LogEngineError($"Can`t create node [{node.GetType().Name}]. Aborted by node.");
-                return;
+                return false;
             }
 
-            nodes.Add(node);
+            lock (nodesLock)
+                nodes.Add(node);
 
-            nodesDb?.AddNode(node);
+            if (writeInDb)
+                nodesDb?.AddNode(node);
 
             LogEngineInfo($"New node [{node.GetType().Name}]");
 
             OnNewNode?.Invoke(node);
+
+            return true;
         }
 
+
+
+        public int AddNodes(List<Node> nodes)
+        {
+            int count = 0;
+
+            List<Node> addedNodes = new List<Node>();
+            foreach (var node in nodes)
+            {
+                bool added = AddNode(node, false);
+                if (added)
+                {
+                    addedNodes.Add(node);
+                    count++;
+                }
+            }
+
+            nodesDb?.AddNodes(addedNodes);
+            return count;
+        }
 
 
 
 
         public void RemoveNode(Node node)
         {
-            if (!nodes.Contains(node))
-            {
-                LogEngineError($"Can`t remove node [{node.GetType().Name}]. Node [{node.Id}] does not exist.");
-                return;
-            }
+            lock (nodesLock)
+                if (!nodes.Contains(node))
+                {
+                    LogEngineError($"Can`t remove node [{node.GetType().Name}]. Node [{node.Id}] does not exist.");
+                    return;
+                }
 
+            List<Node> nodesToRemove = new List<Node>();
+            nodesToRemove.Add(node);
+
+            List<Link> linksToRemove = new List<Link>();
             List<Link> links = GetLinksForNode(node);
+            linksToRemove.AddRange(links);
+
             foreach (var link in links)
             {
-                RemoveLink(link);
+                RemoveLink(link, false);
             }
 
             node.OnRemove();
-            nodes.Remove(node);
-            nodesDb?.RemoveNode(node.Id);
+
+            if (node is PanelNode)
+            {
+                var nodesOnPanel = GetNodesForPanel(node.Id, true);
+                nodesToRemove.AddRange(nodesOnPanel);
+
+                foreach (var n in nodesOnPanel)
+                {
+                    List<Link> li = GetLinksForNode(n);
+                    linksToRemove.AddRange(li);
+                    foreach (var link in li)
+                    {
+                        RemoveLink(link, false);
+                    }
+
+                    LogEngineInfo($"Remove node [{node.GetType().Name}]");
+                    OnRemoveNode?.Invoke(node);
+
+                    lock (nodesLock)
+                        nodes.Remove(n);
+                }
+            }
+
+            lock (nodesLock)
+                nodes.Remove(node);
+
+            nodesDb?.RemoveNodes(nodesToRemove);
+            nodesDb?.RemoveLinks(linksToRemove);
 
             LogEngineInfo($"Remove node [{node.GetType().Name}]");
             OnRemoveNode?.Invoke(node);
@@ -363,14 +424,21 @@ namespace MyNetSensors.Nodes
 
         public List<Node> GetNodesForPanel(string panelId, bool includeSubPanels)
         {
+
             if (!includeSubPanels)
             {
-                return nodes.Where(n => n.PanelId == panelId).ToList();
+                lock (nodesLock)
+                    return nodes.Where(n => n.PanelId == panelId).ToList();
             }
             else
             {
-                List<Node> nodesList = nodes.Where(n => n.PanelId == panelId).ToList();
+                List<Node> nodesList;
+
+                lock (nodesLock)
+                    nodesList = nodes.Where(n => n.PanelId == panelId).ToList();
+
                 List<PanelNode> panels = nodesList.OfType<PanelNode>().ToList();
+
                 foreach (PanelNode panel in panels)
                 {
                     nodesList.AddRange(GetNodesForPanel(panel.Id, true));
@@ -381,17 +449,25 @@ namespace MyNetSensors.Nodes
 
         public List<Link> GetLinksForPanel(string panelId, bool includeSubPanels)
         {
+
             if (!includeSubPanels)
             {
-                return links.Where(n => n.PanelId == panelId).ToList();
+                lock (linksLock)
+                    return links.Where(n => n.PanelId == panelId).ToList();
             }
             else
             {
-                List<Link> linksList = links.Where(n => n.PanelId == panelId).ToList();
+                List<Link> linksList;
+
+                lock (linksLock)
+                    linksList = links.Where(n => n.PanelId == panelId).ToList();
+
                 List<PanelNode> panels = GetNodesForPanel(panelId, true).OfType<PanelNode>().ToList();
-                foreach (PanelNode panel in panels)
+
+                lock (linksLock)
                 {
-                    linksList.AddRange(links.Where(n => n.PanelId == panel.Id).ToList());
+                    foreach (PanelNode panel in panels)
+                        linksList.AddRange(links.Where(n => n.PanelId == panel.Id).ToList());
                 }
                 return linksList;
             }
@@ -400,18 +476,25 @@ namespace MyNetSensors.Nodes
 
         public List<PanelNode> GetPanelNodes()
         {
-            return nodes.Where(n => n is PanelNode).Cast<PanelNode>().ToList();
+            lock (nodesLock)
+                return nodes.Where(n => n is PanelNode).Cast<PanelNode>().ToList();
         }
 
 
 
 
 
-        public void UpdateNode(Node node)
+        public void UpdateNodeOnDashboard(Node node)
         {
-          //  LogEngineInfo($"Update node [{node.GetType().Name}]");
-            OnNodeUpdated?.Invoke(node);
+            OnNodeUpdatedOnDashboard?.Invoke(node);
         }
+
+
+        public void UpdateNodeInEditor(Node node)
+        {
+            OnNodeUpdatedInEditor?.Invoke(node);
+        }
+
 
         public void UpdateNodeInDb(Node node)
         {
@@ -423,14 +506,15 @@ namespace MyNetSensors.Nodes
                 return;
             }
 
-          //  LogEngineInfo($"Update node in DB [{node.GetType().Name}]");
+            //  LogEngineInfo($"Update node in DB [{node.GetType().Name}]");
             nodesDb?.UpdateNode(node);
         }
 
 
         public PanelNode GetPanelNode(string panelId)
         {
-            return (PanelNode)nodes.FirstOrDefault(n => n is PanelNode && n.Id == panelId);
+            lock (nodesLock)
+                return (PanelNode)nodes.FirstOrDefault(n => n is PanelNode && n.Id == panelId);
         }
 
 
@@ -449,7 +533,7 @@ namespace MyNetSensors.Nodes
                 output.Name = name;
                 Node node = GetOutputOwner(output);
                 UpdateNodeInDb(node);
-                UpdateNode(node);
+                UpdateNodeInEditor(node);
             }
 
             output.Value = value;
@@ -471,13 +555,13 @@ namespace MyNetSensors.Nodes
                 input.Name = name;
                 Node node = GetInputOwner(input);
                 UpdateNodeInDb(node);
-                UpdateNode(node);
+                UpdateNodeInEditor(node);
             }
 
             input.Value = value;
         }
 
-        public void AddLink(string outputId, string inputId)
+        public Link AddLink(string outputId, string inputId, bool writeInDb = true)
         {
             Input input = GetInput(inputId);
             Output output = GetOutput(outputId);
@@ -485,13 +569,13 @@ namespace MyNetSensors.Nodes
             if (input == null || output == null)
             {
                 LogEngineError($"Can`t create link from [{outputId}] to [{inputId}]. Does not exist.");
-                return;
+                return null;
             }
 
-            AddLink(output, input);
+            return AddLink(output, input, writeInDb);
         }
 
-        public void AddLink(Output output, Input input)
+        public Link AddLink(Output output, Input input, bool writeInDb = true)
         {
             Node inputNode = GetInputOwner(input);
             Node outputNode = GetOutputOwner(output);
@@ -499,47 +583,67 @@ namespace MyNetSensors.Nodes
             if (inputNode == null || outputNode == null)
             {
                 LogEngineError($"Can`t create link from [{output.Id}] to [{input.Id}]. Does not exist.");
-                return;
+                return null;
             }
 
             if (inputNode == outputNode)
             {
                 LogEngineError($"Can`t create link from [{output.Id}] to [{input.Id}]. Input and output belong to the same node.");
-                return;
+                return null;
             }
 
             if (inputNode.PanelId != outputNode.PanelId)
             {
                 LogEngineError($"Can`t create link from {outputNode.GetType().Name} to {inputNode.GetType().Name}. Nodes are on different panels.");
-                return;
+                return null;
             }
 
 
+            Link link = new Link(output.Id, input.Id, inputNode.PanelId);
 
             //prevent two links to one input
             Link oldLink = GetLinkForInput(input);
             if (oldLink != null)
-                RemoveLink(oldLink);
+                RemoveLink(oldLink, true);
 
             LogEngineInfo($"New link from [{outputNode.GetType().Name}] to [{inputNode.GetType().Name}]");
 
-            Link link = new Link(output.Id, input.Id, inputNode.PanelId);
-            links.Add(link);
+            lock (linksLock)
+                links.Add(link);
 
-            nodesDb?.AddLink(link);
+
+            if (writeInDb)
+                nodesDb?.AddLink(link);
 
             OnNewLink?.Invoke(link);
 
-            if (!started)
-                return;
+            if (started)
+                input.Value = output.Value;
 
-            input.Value = output.Value;
+            return link;
+        }
 
+
+        public int AddLinks(List<Link> links)
+        {
+            List<Link> addedLinks = new List<Link>();
+
+            foreach (var link in links)
+            {
+                Link newLink = AddLink(link.OutputId, link.InputId, false);
+                if (newLink != null)
+                    addedLinks.Add(newLink);
+            }
+
+            nodesDb?.AddLinks(addedLinks);
+
+            return addedLinks.Count;
         }
 
 
 
-        public void RemoveLink(Output output, Input input)
+
+        public void RemoveLink(Output output, Input input, bool writeInDb)
         {
             Link link = GetLink(output, input);
 
@@ -549,45 +653,64 @@ namespace MyNetSensors.Nodes
                 return;
             }
 
+            lock (linksLock)
+                links.Remove(link);
+
+            if (writeInDb)
+                nodesDb?.RemoveLink(link.Id);
+
             Node inputNode = GetInputOwner(input);
             Node outputNode = GetOutputOwner(output);
-
-            links.Remove(link);
-            nodesDb?.RemoveLink(link.Id);
-            LogEngineInfo($"Remove link from [{outputNode.GetType().Name}] to [{inputNode.GetType().Name}]");
+            if (inputNode != null && outputNode != null)
+                LogEngineInfo($"Remove link from [{outputNode.GetType().Name}] to [{inputNode.GetType().Name}]");
+            else
+                LogEngineInfo($"Remove link.");
 
             input.Value = null;
             OnRemoveLink?.Invoke(link);
 
         }
 
-        public void RemoveLink(Link link)
+        public void RemoveLink(Link link, bool writeInDb)
         {
             Output output = GetOutput(link.OutputId);
             Input input = GetInput(link.InputId);
 
             if (output == null || input == null)
             {
-                LogEngineError($"Can`t create link from [{link.OutputId}] to [{link.InputId}]. Does not exist.");
+                LogEngineError($"Can`t remove link from [{link.OutputId}] to [{link.InputId}]. Does not exist.");
                 return;
             }
 
-            RemoveLink(output, input);
+            RemoveLink(output, input, writeInDb);
+        }
+
+        public void RemoveLinks(List<Link> links, bool writeInDb)
+        {
+            foreach (var link in links)
+            {
+                RemoveLink(link, false);
+            }
+
+            nodesDb?.RemoveLinks(links);
         }
 
         public Link GetLink(Output output, Input input)
         {
-            return links.FirstOrDefault(x => x.InputId == input.Id && x.OutputId == output.Id);
+            lock (linksLock)
+                return links.FirstOrDefault(x => x.InputId == input.Id && x.OutputId == output.Id);
         }
 
         public Link GetLinkForInput(Input input)
         {
-            return links.FirstOrDefault(x => x.InputId == input.Id);
+            lock (linksLock)
+                return links.FirstOrDefault(x => x.InputId == input.Id);
         }
 
         public List<Link> GetLinksForOutput(Output output)
         {
-            return links.Where(x => x.OutputId == output.Id).ToList();
+            lock (linksLock)
+                return links.Where(x => x.OutputId == output.Id).ToList();
         }
 
         public List<Link> GetLinksForNode(Node node)
@@ -630,7 +753,12 @@ namespace MyNetSensors.Nodes
                 //update node internal logic
                 Node node = GetInputOwner(input);
                 node.CheckInputDataTypeIsCorrect(input);
-                node.OnInputChange(input);
+
+                if (node.GetNodeOptions().ResetOutputsIfAnyInputIsNull
+                    && node.Inputs.Any(i => !i.IsOptional && i.Value == null))
+                    node.ResetOutputs();
+                else
+                    node.OnInputChange(input);
             }
         }
 
@@ -638,33 +766,39 @@ namespace MyNetSensors.Nodes
 
         public Input GetInput(string id)
         {
-            return nodes.SelectMany(node => node.Inputs).FirstOrDefault(input => input.Id == id);
+            lock (nodesLock)
+                return nodes.SelectMany(node => node.Inputs).FirstOrDefault(input => input.Id == id);
         }
 
         public Output GetOutput(string id)
         {
-            return nodes.SelectMany(node => node.Outputs).FirstOrDefault(output => output.Id == id);
+            lock (nodesLock)
+                return nodes.SelectMany(node => node.Outputs).FirstOrDefault(output => output.Id == id);
         }
 
 
         public Node GetInputOwner(Input input)
         {
-            return nodes.FirstOrDefault(node => node.Inputs.Contains(input));
+            lock (nodesLock)
+                return nodes.FirstOrDefault(node => node.Inputs.Contains(input));
         }
 
         public Node GetOutputOwner(Output output)
         {
-            return nodes.FirstOrDefault(node => node.Outputs.Contains(output));
+            lock (nodesLock)
+                return nodes.FirstOrDefault(node => node.Outputs.Contains(output));
         }
 
         public Node GetInputOwner(string inputId)
         {
-            return (from node in nodes from input in node.Inputs where input.Id == inputId select node).FirstOrDefault();
+            lock (nodesLock)
+                return (from node in nodes from input in node.Inputs where input.Id == inputId select node).FirstOrDefault();
         }
 
         public Node GetOutputOwner(string outputId)
         {
-            return (from node in nodes from output in node.Outputs where output.Id == outputId select node).FirstOrDefault();
+            lock (nodesLock)
+                return (from node in nodes from output in node.Outputs where output.Id == outputId select node).FirstOrDefault();
         }
 
 
@@ -672,14 +806,17 @@ namespace MyNetSensors.Nodes
 
         public void RemoveAllNodesAndLinks()
         {
+            lock (linksLock)
+                links = new List<Link>();
 
-            links = new List<Link>();
-            nodes = new List<Node>();
+            lock (nodesLock)
+                nodes = new List<Node>();
 
             LogEngineInfo("All nodes and links have been removed.");
 
             nodesDb?.RemoveAllNodes();
             nodesDb?.RemoveAllLinks();
+            dataDb?.RemoveAllNodesData();
 
             OnRemoveAllNodesAndLinks?.Invoke();
         }
@@ -725,11 +862,8 @@ namespace MyNetSensors.Nodes
 
                 GenerateNewIds(ref newNodes, ref newLinks);
 
-                foreach (var node in newNodes)
-                    AddNode(node);
-
-                foreach (var link in newLinks)
-                    AddLink(link.OutputId, link.InputId);
+                AddNodes(newNodes);
+                AddLinks(newLinks);
 
                 newNodes[0].ResetInputs();
             }
@@ -741,7 +875,7 @@ namespace MyNetSensors.Nodes
                 GenerateNewIds(newNode);
 
                 newNode.Position = new Position { X = oldNode.Position.X + 5, Y = oldNode.Position.Y + 20 };
-                AddNode(newNode);
+                AddNode(newNode, true);
                 newNode.ResetInputs();
             }
 

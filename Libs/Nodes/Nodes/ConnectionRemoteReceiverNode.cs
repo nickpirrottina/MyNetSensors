@@ -1,32 +1,23 @@
-﻿/*  MyNetSensors 
-    Copyright (C) 2015 Derwish <derwish.pro@gmail.com>
+﻿/*  MyNodes.NET 
+    Copyright (C) 2016 Derwish <derwish.pro@gmail.com>
     License: http://www.gnu.org/licenses/gpl-3.0.txt  
 */
 
-namespace MyNetSensors.Nodes
+namespace MyNodes.Nodes
 {
     public class ConnectionRemoteReceiverNode : Node
     {
-        private string password;
         private int channel;
+        private string password;
 
 
-        public ConnectionRemoteReceiverNode() : base(2, 1)
+        public ConnectionRemoteReceiverNode() : base("Connection", "Remote Receiver")
         {
-            this.Title = "Remote Receiver";
-            this.Type = "Connection/Remote Receiver";
-
-            Inputs[0].Name = "Channel";
-            Inputs[1].Name = "Password";
-
-            Inputs[0].Type = DataType.Number;
-            Inputs[1].Type = DataType.Text;
-            Outputs[0].Type = DataType.Text;
+            AddInput("Channel", DataType.Number, true);
+            AddInput("Password", DataType.Text, true);
+            AddOutput("Out");
         }
 
-        public override void Loop()
-        {
-        }
 
         public override void OnInputChange(Input input)
         {
@@ -42,7 +33,7 @@ namespace MyNetSensors.Nodes
                 string pass = null;
 
                 if (password != null)
-                    for (int i = 0; i < password.Length; i++)
+                    for (var i = 0; i < password.Length; i++)
                     {
                         pass += "*";
                     }
@@ -71,6 +62,13 @@ namespace MyNetSensors.Nodes
         public int GetChannel()
         {
             return channel;
+        }
+
+        public override string GetNodeDescription()
+        {
+            return "This node works in conjunction with Remote Trasmitter, " +
+                    "and provides a remote connection of nodes. <br/>" +
+                    "Read the description to Remote Trasmitter to understand how it works.";
         }
     }
 }

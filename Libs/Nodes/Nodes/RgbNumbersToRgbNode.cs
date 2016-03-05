@@ -1,45 +1,28 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿/*  MyNodes.NET 
+    Copyright (C) 2016 Derwish <derwish.pro@gmail.com>
+    License: http://www.gnu.org/licenses/gpl-3.0.txt  
+*/
 
-namespace MyNetSensors.Nodes.Nodes
+namespace MyNodes.Nodes.Nodes
 {
     public class RgbNumbersToRgbNode : Node
     {
-
-        public RgbNumbersToRgbNode() : base(3, 1)
+        public RgbNumbersToRgbNode() : base("RGB", "Numbers to RGB")
         {
-            this.Title = "Numbers to RGB";
-            this.Type = "RGB/Numbers to RGB";
+            AddInput("R", DataType.Number);
+            AddInput("G", DataType.Number);
+            AddInput("B", DataType.Number);
 
-            Inputs[0].Type = DataType.Number;
-            Inputs[1].Type = DataType.Number;
-            Inputs[2].Type = DataType.Number;
-            Outputs[0].Type = DataType.Text;
+            AddOutput("RGB", DataType.Text);
 
-            Inputs[0].Name = "R";
-            Inputs[1].Name = "G";
-            Inputs[2].Name = "B";
-            Outputs[0].Name = "RGB";
-        }
-        public override void Loop()
-        {
+            options.ResetOutputsIfAnyInputIsNull = true;
         }
 
         public override void OnInputChange(Input input)
         {
-            if (Inputs.Any(i => i.Value == null))
-            {
-                ResetOutputs();
-                return;
-            }
-
-            int r = (int) double.Parse(Inputs[0].Value);
-            int g = (int) double.Parse(Inputs[1].Value);
-            int b = (int) double.Parse(Inputs[2].Value);
+            var r = (int) double.Parse(Inputs[0].Value);
+            var g = (int) double.Parse(Inputs[1].Value);
+            var b = (int) double.Parse(Inputs[2].Value);
 
             if (r < 0 || r > 255)
             {
@@ -47,26 +30,30 @@ namespace MyNetSensors.Nodes.Nodes
                 ResetOutputs();
                 return;
             }
-            else if (g < 0 || g > 255)
+            if (g < 0 || g > 255)
             {
                 LogIncorrectInputValueError(Inputs[1]);
                 ResetOutputs();
                 return;
             }
-            else if (b < 0 || b > 255)
+            if (b < 0 || b > 255)
             {
                 LogIncorrectInputValueError(Inputs[2]);
                 ResetOutputs();
                 return;
             }
 
-            string result = r.ToString("X2")
-                              + g.ToString("X2")
-                              + b.ToString("X2");
+            var result = r.ToString("X2")
+                         + g.ToString("X2")
+                         + b.ToString("X2");
 
             Outputs[0].Value = result;
         }
 
-
+        public override string GetNodeDescription()
+        {
+            return "This node converts three numbers to RGB color. <br/>" +
+                   "For example: 255, 170, 0 will be converted to \"FFAA00\".";
+        }
     }
 }

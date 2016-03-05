@@ -7,7 +7,7 @@
     <ProjectGuid>{55E6EE51-7DA0-48F3-91EE-0B18962E589C}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>MyNetSensors.Nodes</RootNamespace>
+    <RootNamespace>MyNodes.Nodes</RootNamespace>
     <AssemblyName>Nodes.UI</AssemblyName>
     <TargetFrameworkVersion>v4.5.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
@@ -30,6 +30,10 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Newtonsoft.Json, Version=8.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Newtonsoft.Json.8.0.2\lib\net45\Newtonsoft.Json.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -41,30 +45,38 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ChartData.cs" />
-    <Compile Include="UiAudioNode.cs" />
-    <Compile Include="UiVoiceGoogleNode.cs" />
-    <Compile Include="UiVoiceYandexNode.cs" />
+    <Compile Include="Nodes\UiAudioNode.cs" />
+    <Compile Include="Nodes\UiTimerNode.cs" />
+    <Compile Include="Nodes\UiVoiceGoogleNode.cs" />
+    <Compile Include="Nodes\UiVoiceYandexNode.cs" />
     <Compile Include="UiNodesEngine.cs" />
     <Compile Include="UiNode.cs" />
-    <Compile Include="UiButtonNode.cs" />
-    <Compile Include="UiChartNode.cs" />
-    <Compile Include="UiTextBoxNode.cs" />
-    <Compile Include="UiStateNode.cs" />
-    <Compile Include="UiLogNode.cs" />
-    <Compile Include="UiRgbwSlidersNode.cs" />
-    <Compile Include="UiRgbSlidersNode.cs" />
-    <Compile Include="UiSwitchNode.cs" />
-    <Compile Include="UiToggleButtonNode.cs" />
-    <Compile Include="UiSliderNode.cs" />
-    <Compile Include="UiProgressNode.cs" />
-    <Compile Include="UiLabelNode.cs" />
+    <Compile Include="Nodes\UiButtonNode.cs" />
+    <Compile Include="Nodes\UiChartNode.cs" />
+    <Compile Include="Nodes\UiTextBoxNode.cs" />
+    <Compile Include="Nodes\UiStateNode.cs" />
+    <Compile Include="Nodes\UiLogNode.cs" />
+    <Compile Include="Nodes\UiRgbwSlidersNode.cs" />
+    <Compile Include="Nodes\UiRgbSlidersNode.cs" />
+    <Compile Include="Nodes\UiSwitchNode.cs" />
+    <Compile Include="Nodes\UiToggleButtonNode.cs" />
+    <Compile Include="Nodes\UiSliderNode.cs" />
+    <Compile Include="Nodes\UiProgressNode.cs" />
+    <Compile Include="Nodes\UiLabelNode.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="UITimerTask.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Nodes\Nodes.csproj">
       <Project>{d01dc889-34d8-41db-a0e9-81bfb1fa1e1e}</Project>
       <Name>Nodes</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Custom\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
