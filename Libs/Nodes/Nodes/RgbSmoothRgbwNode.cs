@@ -13,7 +13,7 @@ using Timer = System.Timers.Timer;
 
 namespace MyNodes.Nodes
 {
-    public class RgbFadeRgbwNode : Node
+    public class RgbSmoothRgbwNode : Node
     {
 
         private readonly int DEFAULT_INTERVAL = 1000;
@@ -22,29 +22,30 @@ namespace MyNodes.Nodes
 
         private double interval;
 
-        private int[] currentValue;
+        private int[] currentValue = { 0, 0, 0, 0 };
         private int[] startValue;
         private int[] endValue;
 
         private DateTime lastUpdateTime;
         private DateTime startTime;
 
-        public RgbFadeRgbwNode() : base("RGB", "Fade RGBW")
+        public RgbSmoothRgbwNode() : base("RGB", "Smooth RGBW")
         {
-            AddInput("From RGBW", DataType.Text);
-            AddInput("To RGBW", DataType.Text);
+            AddInput("RGBW", DataType.Text);
             AddInput("Interval", DataType.Number, true);
-            AddInput("Start/Stop", DataType.Logical, true);
 
             AddOutput("RGBW");
             AddOutput("Enabled", DataType.Logical);
 
             Outputs[1].Value = "0";
+            Outputs[0].Value = "00000000";
 
             interval = DEFAULT_INTERVAL;
 
             Settings.Add("UpdateInterval", new NodeSetting(NodeSettingType.Number, "Output update interval", "30"));
             Settings.Add("PreventDuplication", new NodeSetting(NodeSettingType.Checkbox, "Prevent duplication", "true"));
+            Settings.Add("StopWhenDisconnected", new NodeSetting(NodeSettingType.Checkbox, "Stop when input color is null", "false"));
+            Settings.Add("ResetWhenDisconnected", new NodeSetting(NodeSettingType.Checkbox, "Reset and send null when input color is null", "false"));
         }
 
         public override void Loop()
@@ -70,7 +71,7 @@ namespace MyNodes.Nodes
                     currentValue[i] = (int)Remap(percent, 0, 100, startValue[i], endValue[i]);
             }
 
-            string newVal= ConvertIntsToHexString(currentValue);
+            string newVal = ConvertIntsToHexString(currentValue);
 
             if (Settings["PreventDuplication"].Value != "true" || Outputs[0].Value != newVal)
                 Outputs[0].Value = newVal;
@@ -82,7 +83,7 @@ namespace MyNodes.Nodes
 
         public override void OnInputChange(Input input)
         {
-            if (input == Inputs[2])
+            if (input == Inputs[1])
             {
                 if (input.Value == null)
                     interval = DEFAULT_INTERVAL;
@@ -95,31 +96,25 @@ namespace MyNodes.Nodes
                 LogInfo($"Interval changed to {interval} ms");
             }
 
-            if (Inputs[0].Value == null || Inputs[1].Value == null)
+
+            if (input == Inputs[0])
             {
-                Stop();
-
-                if (Outputs[0].Value != null)
-                    Outputs[0].Value = null;
-
-                return;
-            }
-
-            if (input == Inputs[3])
-            {
-                if (input.Value == "0")
+                if (input.Value == null)
                 {
-                    Stop();
-                    return;
+                    if (Settings["StopWhenDisconnected"].Value == "true")
+                        Stop();
+
+                    if (Settings["ResetWhenDisconnected"].Value == "true")
+                        Reset();
                 }
-                if (input.Value == "1")
+                else
                 {
                     try
                     {
-                        startValue = ConvertHexStringToIntArray(Inputs[0].Value);
-                        endValue = ConvertHexStringToIntArray(Inputs[1].Value);
+                        startValue = (int[])currentValue.Clone();
+                        endValue = ConvertHexStringToIntArray(Inputs[0].Value);
 
-                        if (startValue.Length != 4 || endValue.Length != 4)
+                        if (endValue.Length != 4)
                             throw new Exception("Incorrect value in input.");
 
                         Start();
@@ -127,10 +122,12 @@ namespace MyNodes.Nodes
                     catch
                     {
                         LogError("Incorrect value in input.");
-                        Stop();
 
-                        if (Outputs[0].Value != null)
-                            Outputs[0].Value = null;
+                        if (Settings["StopWhenDisconnected"].Value == "true")
+                            Stop();
+
+                        if (Settings["ResetWhenDisconnected"].Value == "true")
+                            Reset();
                     }
 
                 }
@@ -148,13 +145,16 @@ namespace MyNodes.Nodes
             }
         }
 
+        private void Reset()
+        {
+            Outputs[0].Value = null;
+            currentValue = new int[] { 0, 0, 0, 0 };
+        }
+
         private void Start()
         {
-            currentValue = (int[]) startValue.Clone();
-
             startTime = DateTime.Now;
             lastUpdateTime = startTime;
-            Outputs[0].Value = ConvertIntsToHexString(currentValue);
 
             Outputs[1].Value = "1";
             enabled = true;
@@ -189,13 +189,21 @@ namespace MyNodes.Nodes
 
         public override string GetNodeDescription()
         {
-            return "This node makes a smooth transition from one RGBW color to another. <br/>" +
-                   "You can specify the time interval for which color must change. <br/>" +
+            return "This node makes a smooth transition of the RGBW color. <br/>" +
+                   "It avoids abrupt changes of the color on the output. <br/><br/>" +
+
+                   "The input named \"Interval\" specifies the time " +
+                   "for which the color should change completely. <br/><br/>" +
+
                    "The output is named \"Enabled\" sends \"1\" " +
-                   "when the node is in the active state (makes the transition). <br/>" +
+                   "when the node is in the active state (makes the transition). <br/><br/>" +
+
                    "In the settings of the node you can increase the refresh rate " +
                    "to make the transition more smoother. " +
-                   "Or, reduce the refresh rate to reduce CPU load.";
+                   "Or, reduce the refresh rate to reduce CPU load.<br/><br/>" +
+
+                   "Also, you can specify in the settings, " +
+                   "what should be done when the input color is null.";
         }
     }
 }

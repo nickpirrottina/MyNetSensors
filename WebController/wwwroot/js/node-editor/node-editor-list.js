@@ -735,6 +735,30 @@
 
             
 
+            //RgbCrossfadeRgbNode
+            function RgbCrossfadeRgbNode () {
+                this.properties = {
+                    'ObjectType': 'MyNodes.Nodes.RgbCrossfadeRgbNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            RgbCrossfadeRgbNode.title = 'Crossfade RGB';
+            LiteGraph.registerNodeType('RGB/Crossfade RGB', RgbCrossfadeRgbNode);
+
+            
+
+            //RgbCrossfadeRgbwNode
+            function RgbCrossfadeRgbwNode () {
+                this.properties = {
+                    'ObjectType': 'MyNodes.Nodes.RgbCrossfadeRgbwNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            RgbCrossfadeRgbwNode.title = 'Crossfade RGBW';
+            LiteGraph.registerNodeType('RGB/Crossfade RGBW', RgbCrossfadeRgbwNode);
+
+            
+
             //RgbFadeRgbNode
             function RgbFadeRgbNode () {
                 this.properties = {
@@ -852,6 +876,30 @@
             }
             RgbRgbwToNumbersNode.title = 'RGBW to Numbers';
             LiteGraph.registerNodeType('RGB/RGBW to Numbers', RgbRgbwToNumbersNode);
+
+            
+
+            //RgbSmoothRgbNode
+            function RgbSmoothRgbNode () {
+                this.properties = {
+                    'ObjectType': 'MyNodes.Nodes.RgbSmoothRgbNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            RgbSmoothRgbNode.title = 'Smooth RGB';
+            LiteGraph.registerNodeType('RGB/Smooth RGB', RgbSmoothRgbNode);
+
+            
+
+            //RgbSmoothRgbwNode
+            function RgbSmoothRgbwNode () {
+                this.properties = {
+                    'ObjectType': 'MyNodes.Nodes.RgbSmoothRgbwNode',
+                    'Assembly': 'Nodes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                };
+            }
+            RgbSmoothRgbwNode.title = 'Smooth RGBW';
+            LiteGraph.registerNodeType('RGB/Smooth RGBW', RgbSmoothRgbwNode);
 
             
 

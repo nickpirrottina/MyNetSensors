@@ -26,13 +26,13 @@ var graph2d = new vis.Graph2d(container, dataset, groups, options);
 $(function () {
 
     //configure signalr
-    var clientsHub = $.connection.nodesEngineHub;
+    var clientsHub = $.connection.dashboardHub;
 
-    clientsHub.client.OnConnected = function () {
+    clientsHub.client.OnGatewayConnected = function () {
         noty({ text: 'Gateway is connected.', type: 'alert', timeout: false });
     };
 
-    clientsHub.client.OnDisconnected = function () {
+    clientsHub.client.OnGatewayDisconnected = function () {
         noty({ text: 'Gateway is disconnected!', type: 'error', timeout: false });
     };
     
@@ -55,7 +55,10 @@ $(function () {
     };
 
 
-    $.connection.hub.start();
+    $.connection.hub.start(
+    function () {
+        clientsHub.server.join(this_panel_id);
+    });
 
     $.connection.hub.stateChanged(function (change) {
         if (change.newState === $.signalR.connectionState.reconnecting) {
